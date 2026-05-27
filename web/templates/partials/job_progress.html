@@ -1,0 +1,24 @@
+{% set current_step = active_step | default(2) %}
+<div
+  id="workflow-stepper"
+  data-current-step="{{ current_step }}"
+  class="rounded-lg border border-slate-200 bg-white px-4 py-3"
+  {% if stepper_oob | default(false) %}hx-swap-oob="true"{% endif %}
+>
+  <ol class="grid gap-3 text-sm font-semibold text-slate-600 sm:grid-cols-4">
+    {% for number, label in [(1, "Fetch URL"), (2, "Review Summary"), (3, "Generate Infographic"), (4, "Complete")] %}
+      {% set is_done = number < current_step or (current_step == 4 and number == 4) %}
+      {% set is_active = number == current_step and current_step != 4 %}
+      <li
+        data-step-number="{{ number }}"
+        {% if number == current_step %}aria-current="step"{% endif %}
+        class="flex items-center gap-2{% if is_done %} text-teal-700{% elif is_active %} text-blue-700{% endif %}"
+      >
+        <span data-step-marker class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold{% if is_done %} bg-teal-100{% elif is_active %} bg-blue-100{% else %} bg-slate-100 text-slate-500{% endif %}">
+          {{ number }}
+        </span>
+        <span>{{ label }}</span>
+      </li>
+    {% endfor %}
+  </ol>
+</div>

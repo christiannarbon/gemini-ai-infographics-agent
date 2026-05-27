@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Login - Infographic Agent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body class="min-h-screen bg-slate-50 text-slate-950">
+    <main class="mx-auto flex min-h-screen w-full max-w-md items-center px-5 py-8">
+      <section class="w-full rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+        <p class="text-sm font-semibold text-blue-700">Agent Platform</p>
+        <h1 class="mt-1 text-2xl font-bold text-slate-950">Login</h1>
+        <form class="mt-6 space-y-4" method="post" action="/login">
+          <input type="hidden" name="next_path" value="{{ next_path }}" />
+          <label class="block">
+            <span class="text-sm font-semibold text-slate-700">Password</span>
+            <input
+              name="password"
+              type="password"
+              required
+              autofocus
+              class="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 text-base outline-none ring-blue-600 transition focus:ring-2"
+            />
+          </label>
+          {% if error %}
+            <div class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-800">
+              {{ error }}
+            </div>
+          {% endif %}
+          <button
+            type="submit"
+            class="inline-flex w-full items-center justify-center rounded-md bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-800"
+          >
+            Login
+          </button>
+        </form>
+      </section>
+    </main>
+  </body>
+</html>

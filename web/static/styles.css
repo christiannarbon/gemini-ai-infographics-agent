@@ -1,0 +1,160 @@
+.htmx-indicator {
+  display: none;
+}
+
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator {
+  display: inline-block;
+}
+
+form.htmx-request button[type="submit"],
+button.htmx-request {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+#workspace > section,
+#graphic-stage > section {
+  animation: fade-in 280ms ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.control-panel {
+  transition: max-width 180ms ease, padding 180ms ease, transform 180ms ease;
+}
+
+.hero-copy {
+  transition: opacity 160ms ease, transform 160ms ease, max-height 160ms ease, margin 160ms ease;
+}
+
+.url-bar {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  box-shadow: 0 18px 45px rgb(15 23 42 / 0.08);
+  display: flex;
+  gap: 8px;
+  padding: 6px;
+}
+
+.workspace-shell {
+  display: none;
+}
+
+.locked-visible {
+  display: none;
+}
+
+[data-summary-review][data-locked="true"] .summary-card-grid textarea {
+  background: #f8fafc;
+  color: #475569;
+  opacity: 0.72;
+  overflow: hidden;
+  pointer-events: none;
+  resize: none;
+}
+
+[data-summary-review][data-locked="true"] .lock-hidden {
+  display: none !important;
+}
+
+[data-summary-review][data-locked="true"] .summary-card-grid {
+  padding-bottom: 0;
+}
+
+[data-summary-review][data-locked="true"] .locked-visible {
+  display: inline-flex;
+}
+
+body.has-workflow .control-panel {
+  background: rgb(248 250 252 / 0.94);
+  border-bottom: 1px solid #e2e8f0;
+  flex: none;
+  justify-content: flex-start;
+  margin-top: 12px;
+  max-width: 72rem;
+  padding-bottom: 16px;
+  padding-top: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+body.has-workflow .hero-copy {
+  margin: 0;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateY(-8px);
+}
+
+body.has-workflow .url-form {
+  margin-top: 0;
+}
+
+body.has-workflow .url-bar {
+  box-shadow: 0 8px 24px rgb(15 23 42 / 0.06);
+}
+
+body.has-workflow .workspace-shell {
+  display: block;
+}
+
+.status-pending {
+  background: #cbd5e1;
+}
+
+.status-running {
+  background: #2563eb;
+  box-shadow: 0 0 0 4px #dbeafe;
+}
+
+.status-done {
+  background: #0f766e;
+}
+
+.status-failed {
+  background: #dc2626;
+}
+
+.graphic-canvas svg {
+  display: block;
+  height: auto;
+  margin-left: auto;
+  margin-right: auto;
+  max-height: 76vh;
+  object-fit: contain;
+  width: 100%;
+}
+
+.graphic-canvas img {
+  max-height: 76vh;
+  object-fit: contain;
+}
+
+@media (max-width: 640px) {
+  .url-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .url-bar button {
+    width: 100%;
+  }
+
+  body.has-workflow .control-panel {
+    margin-top: 8px;
+  }
+}

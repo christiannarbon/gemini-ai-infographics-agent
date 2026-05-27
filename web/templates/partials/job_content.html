@@ -1,0 +1,79 @@
+{% if job.kind == "summary" %}
+  {% set active_step = 1 %}
+  {% include "partials/job_progress.html" with context %}
+{% endif %}
+
+<div>
+  <p class="text-sm font-semibold text-blue-700">Agent is processing</p>
+  <h2 class="mt-1 text-2xl font-bold text-slate-950">{{ job.title }}</h2>
+</div>
+
+{% if job.status == "failed" %}
+  <div class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+    <p class="font-bold">Processing failed</p>
+    <p class="mt-2 whitespace-pre-line break-words font-medium">{{ job.error }}</p>
+    <div class="mt-4 flex flex-wrap items-center gap-3">
+      <a href="/" class="rounded-md border border-red-200 bg-white px-4 py-2 text-sm font-bold text-red-800 transition hover:bg-red-100">
+        Start Over from URL
+      </a>
+      {% if job.kind == "graphic" and job.summary %}
+        <form
+          hx-post="/graphics"
+          hx-target="closest section"
+          hx-swap="outerHTML"
+          hx-disabled-elt="find button[type='submit']"
+        >
+          <input type="hidden" name="session_id" value="{{ job.summary.session_id }}" />
+          <input type="hidden" name="summary_text" value="{{ job.summary.summary_lines | join('\n') }}" />
+          <input type="hidden" name="key_points_text" value="{{ job.summary.key_points | join('\n') }}" />
+          <button type="submit" class="rounded-md bg-red-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60">
+            Generate Again
+          </button>
+        </form>
+      {% endif %}
+    </div>
+    <p class="mt-3 text-xs text-red-700">
+      Please check the Cloud Run logs and Agent Runtime logs to investigate the cause.
+    </p>
+  </div>
+{% else %}
+  {% if job.status == "running" %}
+    <div class="min-h-[96px] rounded-lg border border-blue-100 bg-blue-50 p-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p class="text-sm font-bold text-blue-900">Processing in Agent Runtime</p>
+          <p class="mt-1 text-sm text-blue-800">{{ job.wait_hint }}</p>
+        </div>
+        <div class="rounded-md bg-white px-3 py-2 text-sm font-semibold text-blue-900 shadow-sm">
+          Elapsed {{ job.elapsed_seconds }} seconds
+        </div>
+      </div>
+    </div>
+    {% if job.is_slow %}
+      <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+        <p class="font-bold">Taking longer than usual</p>
+        <p class="mt-1">{{ job.slow_message }}</p>
+      </div>
+    {% endif %}
+  {% endif %}
+  <details open class="rounded-lg border border-slate-200 bg-white px-4 py-3">
+    <summary class="cursor-pointer text-sm font-bold text-slate-800">Agent Processing Log</summary>
+    <div class="mt-4 border-t border-slate-100 pt-4">
+      {% set steps = job.progress %}
+      {% set progress_title = "Agent Progress" %}
+      {% set progress_shell = "plain" %}
+      {% include "partials/progress.html" with context %}
+    </div>
+  </details>
+  {% if job.show_estimated_progress %}
+    <details open class="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3">
+      <summary class="cursor-pointer text-sm font-bold text-blue-900">Current Estimate</summary>
+      <div class="mt-4 border-t border-blue-100 pt-4">
+        {% set steps = job.estimated_progress %}
+        {% set progress_title = "Current Estimate" %}
+        {% set progress_shell = "plain" %}
+        {% include "partials/progress.html" with context %}
+      </div>
+    </details>
+  {% endif %}
+{% endif %}

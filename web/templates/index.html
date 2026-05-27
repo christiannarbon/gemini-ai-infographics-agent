@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Turn a blog post into a single infographic | Agent Runtime</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <link rel="stylesheet" href="/static/styles.css?v=20260525-stable-polling" />
+  </head>
+  <body class="min-h-screen bg-slate-50 text-slate-950">
+    <main class="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 py-6">
+      <header class="flex flex-col gap-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p class="text-sm font-semibold text-slate-500">Gemini Enterprise Agent Platform / ADK / Agent Runtime</p>
+        </div>
+        {% if auth_enabled %}
+          <form method="post" action="/logout">
+            <button type="submit" class="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+              Logout
+            </button>
+          </form>
+        {% endif %}
+      </header>
+
+      <section id="control-panel" class="control-panel mx-auto flex w-full max-w-4xl flex-1 flex-col justify-start pt-[18vh]">
+        <div id="hero-copy" class="hero-copy text-center">
+          <p class="text-sm font-bold uppercase tracking-[0.12em] text-blue-700">Step 1 / 4 · Enter URL</p>
+          <h1 class="mt-3 text-4xl font-bold tracking-normal text-slate-950 sm:text-5xl">Turn a blog post into a single infographic</h1>
+          <p class="mx-auto mt-5 max-w-3xl text-lg leading-8 text-slate-600 lg:whitespace-nowrap">
+            Enter a blog post URL, and the Agent will summarize it and generate an infographic image.
+          </p>
+          <p class="mx-auto mt-3 max-w-2xl text-sm font-medium leading-6 text-slate-500">
+            The Agent's progress will be displayed during processing. Depending on the environment, it may take 1 to 3 minutes to complete.
+          </p>
+        </div>
+
+        <form
+          id="url-form"
+          class="url-form mt-10"
+          hx-post="/summaries"
+          hx-target="#workspace"
+          hx-swap="innerHTML"
+          hx-indicator="#summary-loading"
+          hx-disabled-elt="find button[type='submit']"
+          data-start-workflow
+        >
+          <label for="url" class="sr-only">Blog post URL</label>
+          <div class="url-bar flex items-center gap-2 rounded-lg border border-slate-300 bg-white p-2 shadow-xl shadow-slate-200/70 max-sm:flex-col max-sm:items-stretch">
+            <input
+              id="url"
+              name="url"
+              type="url"
+              required
+              placeholder="https://example.com/blog/article"
+              class="min-w-0 flex-1 rounded-md border-0 bg-transparent px-5 py-4 text-lg text-slate-950 outline-none placeholder:text-slate-400"
+            />
+            <button
+              type="submit"
+              class="inline-flex shrink-0 items-center justify-center rounded-md bg-blue-700 px-6 py-4 text-base font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60 max-sm:w-full"
+            >
+              Start Agent
+            </button>
+          </div>
+          <div id="summary-loading" class="htmx-indicator mt-3 text-sm font-medium text-blue-700">Agent is processing the article...</div>
+        </form>
+      </section>
+
+      <section id="workspace" class="workspace-shell mx-auto hidden w-full max-w-6xl pb-12">
+        <div class="empty-state mx-auto max-w-2xl text-center text-slate-500">
+          <div class="mx-auto h-px w-24 bg-slate-200"></div>
+          <p class="mt-6 text-sm">Once started, progress, summary, and the infographic result will be displayed here.</p>
+        </div>
+      </section>
+    </main>
+    <script>
+      function setWorkflowStep(step) {
+        const stepper = document.getElementById("workflow-stepper");
+        if (!stepper) {
+          return;
+        }
+        const currentStep = Number(step);
+        stepper.dataset.currentStep = String(currentStep);
+        stepper.querySelectorAll("[data-step-number]").forEach(function (item) {
+          const number = Number(item.dataset.stepNumber);
+          const marker = item.querySelector("[data-step-marker]");
+          item.className = "flex items-center gap-2";
+          item.removeAttribute("aria-current");
+          if (marker) {
+            marker.className = "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold";
+          }
+          if (number === currentStep) {
+            item.setAttribute("aria-current", "step");
+          }
+          if (number < currentStep || (currentStep === 4 && number === 4)) {
+            item.classList.add("text-teal-700");
+            if (marker) {
+              marker.classList.add("bg-teal-100");
+            }
+          } else if (number === currentStep) {
+            item.classList.add("text-blue-700");
+            if (marker) {
+              marker.classList.add("bg-blue-100");
+            }
+          } else if (marker) {
+            marker.classList.add("bg-slate-100", "text-slate-500");
+          }
+        });
+      }
+
+      function getSummaryTextareas(review) {
+        return review.querySelectorAll(".summary-card-grid textarea");
+      }
+
+      function fitReviewTextareas(review) {
+        getSummaryTextareas(review).forEach(function (textarea) {
+          textarea.style.height = "auto";
+          textarea.style.height = `${textarea.scrollHeight + 2}px`;
+        });
+      }
+
+      function setSummaryLockedUi(review, locked) {
+        review.querySelectorAll(".lock-hidden").forEach(function (element) {
+          element.hidden = locked;
+          element.style.display = locked ? "none" : "";
+        });
+        review.querySelectorAll(".locked-visible").forEach(function (element) {
+          element.style.display = locked ? "inline-flex" : "";
+        });
+        review.querySelectorAll(".summary-card-grid").forEach(function (element) {
+          element.style.paddingBottom = locked ? "0" : "";
+        });
+      }
+
+      function lockSummaryReview(review) {
+        if (!review) {
+          return;
+        }
+        review.dataset.locked = "true";
+        setSummaryLockedUi(review, true);
+        getSummaryTextareas(review).forEach(function (textarea) {
+          textarea.readOnly = true;
+          textarea.style.overflow = "hidden";
+        });
+        fitReviewTextareas(review);
+      }
+
+      function unlockSummaryReview(review) {
+        if (!review) {
+          return;
+        }
+        delete review.dataset.locked;
+        setSummaryLockedUi(review, false);
+        getSummaryTextareas(review).forEach(function (textarea) {
+          textarea.readOnly = false;
+          textarea.style.height = "";
+          textarea.style.overflow = "";
+        });
+      }
+
+      document.body.addEventListener("htmx:beforeRequest", function (event) {
+        if (event.target && event.target.matches("[data-start-workflow]")) {
+          document.body.classList.add("has-workflow");
+          document.getElementById("control-panel").className = "control-panel sticky top-0 z-20 mx-auto mt-3 w-full max-w-6xl border-b border-slate-200 bg-slate-50/95 pb-4 pt-2";
+          document.getElementById("hero-copy").className = "hero-copy hidden";
+          document.getElementById("url-form").className = "url-form";
+          document.getElementById("workspace").classList.remove("hidden");
+        }
+        if (event.target && event.target.matches("[data-graphic-workflow]")) {
+          lockSummaryReview(event.target.closest("[data-summary-review]"));
+          setWorkflowStep(3);
+        }
+      });
+
+      document.body.addEventListener("htmx:afterRequest", function (event) {
+        if (event.target && event.target.matches("[data-graphic-workflow]") && !event.detail.successful) {
+          const review = event.target.closest("[data-summary-review]");
+          unlockSummaryReview(review);
+          setWorkflowStep(2);
+        }
+      });
+
+      document.body.addEventListener("htmx:afterSwap", function (event) {
+        const target = event.detail.target;
+        const stage = document.getElementById("graphic-stage");
+        const updatedStep =
+          (stage && stage.querySelector("[data-workflow-step]")) ||
+          (target && target.matches && target.matches("[data-workflow-step]") && target) ||
+          (target && target.querySelector && target.querySelector("[data-workflow-step]"));
+        if (!updatedStep) {
+          return;
+        }
+
+        const review = document.querySelector("[data-summary-review]");
+        if (updatedStep.dataset.workflowStatus === "failed") {
+          unlockSummaryReview(review);
+          setWorkflowStep(2);
+        } else {
+          lockSummaryReview(review);
+          setWorkflowStep(updatedStep.dataset.workflowStep);
+        }
+
+        if (stage && stage.contains(updatedStep)) {
+          updatedStep.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      });
+    </script>
+  </body>
+</html>
