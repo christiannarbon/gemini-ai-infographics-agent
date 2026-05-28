@@ -17,10 +17,10 @@ Enable the virtual environment (`venv`) and install the required dependencies:
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -U pip
-python -m pip install -r requirements.txt -c constraints-workshop.txt
+python -m pip install -r requirements.txt -c constraints.txt
 ```
 
-The `constraints-workshop.txt` file is used to ensure consistent, pinned versions across Cloud Shell, Cloud Run, and Agent Runtime builds.
+The `constraints.txt` file is used to ensure consistent, pinned versions across Cloud Shell, Cloud Run, and Agent Runtime builds.
 
 ## 2. Configure Environment Variables
 

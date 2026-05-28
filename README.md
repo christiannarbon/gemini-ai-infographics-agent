@@ -21,7 +21,7 @@ Users can clone this repository in Google Cloud Shell or a local terminal, and d
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt -c constraints-workshop.txt
+pip install -r requirements.txt -c constraints.txt
 
 export MOCK_MODE=true
 export AGENT_BACKEND=local
