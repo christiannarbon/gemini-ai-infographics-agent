@@ -7,7 +7,9 @@ from pydantic import BaseModel, Field
 from agent.models import GraphicResult, ProgressStep, SummaryResult
 
 
-RuntimeOperation = Literal["unknown", "summarize_url", "generate_graphic", "regenerate_graphic"]
+RuntimeOperation = Literal[
+    "unknown", "summarize_url", "generate_graphic", "regenerate_graphic"
+]
 
 
 class RuntimeProgressStep(BaseModel):
@@ -55,7 +57,9 @@ class RuntimeSummaryPayload(BaseModel):
             key_points=summary.key_points,
             article_text=summary.article_text,
             text_backend=summary.text_backend,
-            progress=[RuntimeProgressStep.from_result(step) for step in summary.progress],
+            progress=[
+                RuntimeProgressStep.from_result(step) for step in summary.progress
+            ],
         )
 
 
@@ -97,7 +101,9 @@ class RuntimeGraphicPayload(BaseModel):
             artifact_mime_type=graphic.artifact_mime_type,
             visual_style=graphic.visual_style,
             style_reason=graphic.style_reason,
-            progress=[RuntimeProgressStep.from_result(step) for step in graphic.progress],
+            progress=[
+                RuntimeProgressStep.from_result(step) for step in graphic.progress
+            ],
         )
 
 
