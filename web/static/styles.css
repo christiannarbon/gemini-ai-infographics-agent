@@ -31,11 +31,18 @@ button.htmx-request {
 }
 
 .control-panel {
-  transition: max-width 180ms ease, padding 180ms ease, transform 180ms ease;
+  transition:
+    max-width 180ms ease,
+    padding 180ms ease,
+    transform 180ms ease;
 }
 
 .hero-copy {
-  transition: opacity 160ms ease, transform 160ms ease, max-height 160ms ease, margin 160ms ease;
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease,
+    max-height 160ms ease,
+    margin 160ms ease;
 }
 
 .url-bar {

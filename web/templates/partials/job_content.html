@@ -2,31 +2,33 @@
   {% set active_step = 1 %}
   {% include "partials/job_progress.html" with context %}
 {% endif %}
-
 <div>
   <p class="text-sm font-semibold text-blue-700">Agent is processing</p>
   <h2 class="mt-1 text-2xl font-bold text-slate-950">{{ job.title }}</h2>
 </div>
-
 {% if job.status == "failed" %}
   <div class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
     <p class="font-bold">Processing failed</p>
     <p class="mt-2 whitespace-pre-line break-words font-medium">{{ job.error }}</p>
     <div class="mt-4 flex flex-wrap items-center gap-3">
-      <a href="/" class="rounded-md border border-red-200 bg-white px-4 py-2 text-sm font-bold text-red-800 transition hover:bg-red-100">
+      <a href="/"
+         class="rounded-md border border-red-200 bg-white px-4 py-2 text-sm font-bold text-red-800 transition hover:bg-red-100">
         Start Over from URL
       </a>
       {% if job.kind == "graphic" and job.summary %}
-        <form
-          hx-post="/graphics"
-          hx-target="closest section"
-          hx-swap="outerHTML"
-          hx-disabled-elt="find button[type='submit']"
-        >
+        <form hx-post="/graphics"
+              hx-target="closest section"
+              hx-swap="outerHTML"
+              hx-disabled-elt="find button[type='submit']">
           <input type="hidden" name="session_id" value="{{ job.summary.session_id }}" />
-          <input type="hidden" name="summary_text" value="{{ job.summary.summary_lines | join('\n') }}" />
-          <input type="hidden" name="key_points_text" value="{{ job.summary.key_points | join('\n') }}" />
-          <button type="submit" class="rounded-md bg-red-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60">
+          <input type="hidden"
+                 name="summary_text"
+                 value="{{ job.summary.summary_lines | join('\n') }}" />
+          <input type="hidden"
+                 name="key_points_text"
+                 value="{{ job.summary.key_points | join('\n') }}" />
+          <button type="submit"
+                  class="rounded-md bg-red-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60">
             Generate Again
           </button>
         </form>

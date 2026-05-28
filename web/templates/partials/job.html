@@ -3,20 +3,10 @@
   {% set stepper_oob = true %}
   {% include "partials/job_progress.html" with context %}
 {% endif %}
-
-<section
-  id="{{ job.job_id }}"
-  class="space-y-6"
-  {% if job.kind == "graphic" %}data-workflow-step="3"{% endif %}
-  {% if job.kind == "graphic" %}data-workflow-status="{{ job.status }}"{% endif %}
-  {% if job.status == "running" %}
-    hx-get="/jobs/{{ job.job_id }}"
-    hx-trigger="every 2s"
-    hx-target="#{{ job.job_id }}-content"
-    hx-swap="innerHTML"
-  {% endif %}
->
-  <div id="{{ job.job_id }}-content" class="space-y-6">
-    {% include "partials/job_content.html" with context %}
-  </div>
+<section id="{{ job.job_id }}"
+         class="space-y-6"
+         {% if job.kind == "graphic" %}data-workflow-step="3"{% endif %}
+         {% if job.kind == "graphic" %}data-workflow-status="{{ job.status }}"{% endif %}
+         {% if job.status == "running" %} hx-get="/jobs/{{ job.job_id }}" hx-trigger="every 2s" hx-target="#{{ job.job_id }}-content" hx-swap="innerHTML" {% endif %}>
+  <div id="{{ job.job_id }}-content" class="space-y-6">{% include "partials/job_content.html" with context %}</div>
 </section>

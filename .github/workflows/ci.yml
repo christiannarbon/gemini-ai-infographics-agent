@@ -1,0 +1,47 @@
+name: Web Components CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  lint-and-format:
+    name: Lint and Format Web Assets
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Linting Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install djlint
+
+      - name: Run djLint Format Check
+        run: |
+          djlint web/templates/ --check
+
+      - name: Run djLint Linting Check
+        run: |
+          djlint web/templates/ --lint
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Prettier Formatting Check
+        run: |
+          npx prettier --check "web/static/**/*.css"

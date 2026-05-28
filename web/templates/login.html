@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -16,23 +16,17 @@
           <input type="hidden" name="next_path" value="{{ next_path }}" />
           <label class="block">
             <span class="text-sm font-semibold text-slate-700">Password</span>
-            <input
-              name="password"
-              type="password"
-              required
-              autofocus
-              class="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 text-base outline-none ring-blue-600 transition focus:ring-2"
-            />
+            <input name="password"
+                   type="password"
+                   required
+                   autofocus
+                   class="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 text-base outline-none ring-blue-600 transition focus:ring-2" />
           </label>
           {% if error %}
-            <div class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-800">
-              {{ error }}
-            </div>
+            <div class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-800">{{ error }}</div>
           {% endif %}
-          <button
-            type="submit"
-            class="inline-flex w-full items-center justify-center rounded-md bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-800"
-          >
+          <button type="submit"
+                  class="inline-flex w-full items-center justify-center rounded-md bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-800">
             Login
           </button>
         </form>

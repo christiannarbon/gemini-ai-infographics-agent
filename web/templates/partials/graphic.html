@@ -1,7 +1,6 @@
 {% set active_step = 4 %}
 {% set stepper_oob = true %}
 {% include "partials/job_progress.html" with context %}
-
 <section class="space-y-6" data-workflow-step="4" data-workflow-status="done">
   <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
     <div class="flex flex-wrap items-center gap-3">
@@ -9,7 +8,6 @@
       <span class="rounded-md bg-teal-100 px-3 py-1.5 text-sm font-bold text-teal-800">Generation Complete</span>
     </div>
   </div>
-
   <div class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
     <div class="flex flex-col gap-2 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
@@ -18,7 +16,8 @@
       </div>
       {% if graphic.artifact_url %}
         <div class="flex flex-wrap items-center gap-3">
-          <a href="/graphics/{{ graphic.session_id }}/download" class="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+          <a href="/graphics/{{ graphic.session_id }}/download"
+             class="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
             Save Image
           </a>
         </div>
@@ -26,13 +25,14 @@
     </div>
     <div class="graphic-canvas bg-white p-2 sm:p-3">
       {% if graphic.artifact_url and not graphic.svg %}
-        <img src="{{ graphic.artifact_url }}" alt="Infographic" class="mx-auto block h-auto w-full" />
+        <img src="{{ graphic.artifact_url }}"
+             alt="Infographic"
+             class="mx-auto block h-auto w-full" />
       {% else %}
         {{ graphic.svg | safe }}
       {% endif %}
     </div>
   </div>
-
   <details class="rounded-lg border border-slate-200 bg-white p-5">
     <summary class="cursor-pointer text-sm font-bold text-slate-800">Review Summary and Visual Plan</summary>
     <div class="mt-5 grid gap-5 lg:grid-cols-2">
@@ -65,9 +65,7 @@
           </span>
         </div>
         {% if graphic.style_reason %}
-          <p class="mt-3 text-sm font-semibold leading-6 text-slate-700">
-            Reasoning: {{ graphic.style_reason }}
-          </p>
+          <p class="mt-3 text-sm font-semibold leading-6 text-slate-700">Reasoning: {{ graphic.style_reason }}</p>
         {% endif %}
         <ol class="mt-4 grid gap-2">
           {% for item in graphic.visual_plan %}
@@ -77,7 +75,6 @@
       </div>
     </div>
   </details>
-
   <details class="border-y border-slate-200 py-5">
     <summary class="cursor-pointer text-sm font-bold text-slate-800">Processing Log and Generation Info</summary>
     <div class="mt-5">
@@ -85,54 +82,54 @@
       <dl class="mt-5 grid gap-2 text-xs text-slate-500">
         <div>
           <dt class="font-semibold">Artifact</dt>
-          <dd class="break-all">{{ graphic.artifact_path }}</dd>
+          <dd class="break-all">
+            {{ graphic.artifact_path }}
+          </dd>
         </div>
         <div>
           <dt class="font-semibold">Backend</dt>
-          <dd>{{ graphic.image_backend }}</dd>
+          <dd>
+            {{ graphic.image_backend }}
+          </dd>
         </div>
       </dl>
     </div>
   </details>
-
-  <form
-    class="rounded-lg border border-slate-200 bg-white p-5"
-    hx-post="/graphics/regenerate"
-    hx-target="closest section"
-    hx-swap="outerHTML"
-    hx-indicator="#regen-loading"
-    hx-disabled-elt="find button[type='submit']"
-    data-graphic-workflow
-  >
+  <form class="rounded-lg border border-slate-200 bg-white p-5"
+        hx-post="/graphics/regenerate"
+        hx-target="closest section"
+        hx-swap="outerHTML"
+        hx-indicator="#regen-loading"
+        hx-disabled-elt="find button[type='submit']"
+        data-graphic-workflow>
     <input type="hidden" name="session_id" value="{{ summary.session_id }}" />
     <label for="feedback" class="block text-sm font-semibold text-slate-700">Feedback</label>
-    <textarea
-      id="feedback"
-      name="feedback"
-      rows="3"
-      placeholder="e.g. Make the composition convey the business flow better"
-      class="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 text-base outline-none ring-blue-600 transition focus:ring-2"
-    >{{ feedback }}</textarea>
+    <textarea id="feedback"
+              name="feedback"
+              rows="3"
+              placeholder="e.g. Make the composition convey the business flow better"
+              class="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 text-base outline-none ring-blue-600 transition focus:ring-2">{{ feedback }}</textarea>
     <div class="mt-3 flex flex-wrap items-center gap-3">
-      <button type="submit" class="rounded-md bg-teal-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60">
+      <button type="submit"
+              class="rounded-md bg-teal-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60">
         Regenerate with Feedback
       </button>
-      <span id="regen-loading" class="htmx-indicator text-sm font-medium text-teal-700">Agent is regenerating...</span>
+      <span id="regen-loading"
+            class="htmx-indicator text-sm font-medium text-teal-700">Agent is regenerating...</span>
     </div>
   </form>
-
-  <form
-    class="flex justify-end"
-    hx-post="/summaries"
-    hx-target="#workspace"
-    hx-swap="innerHTML"
-    hx-indicator="#summary-loading-again"
-    hx-disabled-elt="find button[type='submit']"
-  >
+  <form class="flex justify-end"
+        hx-post="/summaries"
+        hx-target="#workspace"
+        hx-swap="innerHTML"
+        hx-indicator="#summary-loading-again"
+        hx-disabled-elt="find button[type='submit']">
     <input type="hidden" name="url" value="{{ summary.url }}" />
-    <button type="submit" class="rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60">
+    <button type="submit"
+            class="rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60">
       Start Over from Summary
     </button>
-    <span id="summary-loading-again" class="htmx-indicator ml-2 text-sm font-medium text-blue-700">Resummarizing...</span>
+    <span id="summary-loading-again"
+          class="htmx-indicator ml-2 text-sm font-medium text-blue-700">Resummarizing...</span>
   </form>
 </section>
