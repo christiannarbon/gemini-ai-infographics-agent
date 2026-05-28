@@ -36,7 +36,7 @@ set -euo pipefail
 
 if [[ -z "${PROJECT_ID:-}" ]]; then
   echo "========================================================================="
-  echo " ❌ ERROR: PROJECT_ID environment variable is not set."
+  echo " ERROR: PROJECT_ID environment variable is not set."
   echo "========================================================================="
   echo " To deploy this application, you must specify your Google Cloud Project ID."
   echo " Please set it by running the following command in your terminal:"
@@ -65,17 +65,17 @@ failures=0
 
 # Print a successful check result (green checkmark)
 pass() {
-  echo "  [✓] PASS: $*"
+  echo "  [PASS] $*"
 }
 
-# Print a non-blocking warning (exclamation mark). The script will still pass.
+# Print a non-blocking warning. The script will still pass.
 warn() {
-  echo "  [!] WARNING: $*" >&2
+  echo "  [WARN] $*" >&2
 }
 
-# Print a critical failure (cross mark). This will block successful preflight.
+# Print a critical failure. This will block successful preflight.
 fail() {
-  echo "  [✗] FAIL: $*" >&2
+  echo "  [FAIL] $*" >&2
   failures=$((failures + 1))
 }
 
@@ -276,10 +276,10 @@ done
 if (( failures > 0 )); then
   echo
   echo "========================================================================="
-  echo " ❌ PREFLIGHT VERIFICATION FAILED"
+  echo " PREFLIGHT VERIFICATION FAILED"
   echo "========================================================================="
   echo " We found ${failures} issue(s) that must be resolved before proceeding."
-  echo " Please check the [✗] FAIL items listed above, fix them, and run this script again:"
+  echo " Please check the [FAIL] items listed above, fix them, and run this script again:"
   echo ""
   echo "   ./scripts/infographic-agent-preflight.sh"
   echo "========================================================================="
@@ -289,7 +289,7 @@ fi
 cat <<'EOF'
 
 =========================================================================
- 🎉 PREFLIGHT PASSED!
+ PREFLIGHT PASSED!
 =========================================================================
  Your environment is fully configured and ready!
  You can now safely run the bootstrap script to deploy the application.
