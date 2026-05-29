@@ -7,7 +7,7 @@ This guide describes how to deploy the web application to Google Cloud Run and p
 For beginners new to the project, here is an explanation of what the deployment and testing steps do:
 1. **Cloud Run Deployment**: Runs the `scripts/cloud-run-deployment.sh` script to upload the source code, build a Docker container in the cloud, and deploy the FastAPI web frontend onto a serverless hosting service called **Google Cloud Run**.
 2. **Smoke Testing**: Validates the end-to-end functionality by opening the deployed web app in a browser, logging in, entering a blog URL, and verifying that the agent generates a summary and creates the infographics image.
-3. **Mock Mode (Local Testing)**: A local-only fallback mode that bypasses Google Cloud deployment, billing, and IAM setups. It runs the FastAPI web app on your local machine or Cloud Shell using mock database caches and local agent pipelines, allowing you to preview the application instantly.
+3. **Mock Mode (Local Testing)**: A local-only fallback mode that bypasses Google Cloud deployment, billing, and IAM setups. It runs the FastAPI web app on your local machine using mock database caches and local agent pipelines, allowing you to preview the application instantly.
 
 ---
 
@@ -39,7 +39,7 @@ Service URL: https://infographics-agent-demo-PROJECT_NUMBER.REGION.run.app
 Copy and save this URL.
 
 > [!IMPORTANT]
-> When redeploying the service, make sure to keep using the same `APP_SECRET_KEY` generated in Phase 0. Changing the key invalidates existing login cookies, requiring all active users to log in again. To avoid losing the key when closing the Cloud Shell tab, print and save the current key using `echo "${APP_SECRET_KEY}"`.
+> When redeploying the service, make sure to keep using the same `APP_SECRET_KEY` generated in environment prep phase. Changing the key invalidates existing login cookies, requiring all active users to log in again. To avoid losing the key when closing the terminal, print and save the current key using `echo "${APP_SECRET_KEY}"` and sotre it somewhere secure.
 
 ---
 
@@ -74,7 +74,7 @@ https://infographics-agent-demo-PROJECT_NUMBER.REGION.run.app
 
 If you are blocked by Google Cloud billing setup, IAM configurations, or Agent Runtime deployment issues, you can run the application in **Mock Mode** to test the web frontend locally. No cloud resources or deployments are required.
 
-Run the following commands in your Cloud Shell terminal:
+Run the following commands in your terminal:
 
 ```bash
 export MOCK_MODE="true"
