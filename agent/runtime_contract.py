@@ -8,7 +8,7 @@ from agent.models import GraphicResult, ProgressStep, SummaryResult
 
 
 RuntimeOperation = Literal[
-    "unknown", "summarize_url", "generate_graphic", "regenerate_graphic"
+    "unknown", "summarize_url", "generate_infographics", "regenerate_infographics"
 ]
 
 
@@ -63,7 +63,7 @@ class RuntimeSummaryPayload(BaseModel):
         )
 
 
-class RuntimeGraphicPayload(BaseModel):
+class RuntimeInfographicsPayload(BaseModel):
     session_id: str
     visual_plan: list[str] = Field(default_factory=list)
     artifact_path: str
@@ -90,7 +90,7 @@ class RuntimeGraphicPayload(BaseModel):
         )
 
     @classmethod
-    def from_result(cls, graphic: GraphicResult) -> "RuntimeGraphicPayload":
+    def from_result(cls, graphic: GraphicResult) -> "RuntimeInfographicsPayload":
         return cls(
             session_id=graphic.session_id,
             visual_plan=graphic.visual_plan,
@@ -110,5 +110,5 @@ class RuntimeGraphicPayload(BaseModel):
 class RuntimeWorkflowResponse(BaseModel):
     operation: RuntimeOperation
     summary: Optional[RuntimeSummaryPayload] = None
-    graphic: Optional[RuntimeGraphicPayload] = None
+    infographics: Optional[RuntimeInfographicsPayload] = None
     error: str = ""
