@@ -49,11 +49,11 @@ jobs:
 
       - name: Run Ruff Format Check
         run: |
-          ruff format --check agent/
+          ruff format --check agent/ web/
 
       - name: Run Ruff Linting Check
         run: |
-          ruff check agent/
+          ruff check agent/ web/
 
       - name: Clear CI Cache
         env:

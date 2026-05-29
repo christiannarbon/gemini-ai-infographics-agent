@@ -27,7 +27,9 @@ def auth_enabled() -> bool:
 
 
 def assert_auth_config() -> None:
-    production = os.getenv("K_SERVICE") or os.getenv("APP_ENV", "").lower() == "production"
+    production = (
+        os.getenv("K_SERVICE") or os.getenv("APP_ENV", "").lower() == "production"
+    )
     if not production:
         return
     if not auth_password():
@@ -87,5 +89,7 @@ def password_matches(candidate: str) -> bool:
 
 def _sign(payload: str) -> str:
     secret = auth_secret_key() or auth_password()
-    digest = hmac.new(secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).digest()
+    digest = hmac.new(
+        secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256
+    ).digest()
     return base64.urlsafe_b64encode(digest).decode("ascii").rstrip("=")

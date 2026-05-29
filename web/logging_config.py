@@ -10,7 +10,9 @@ from datetime import datetime, timezone
 class JsonLogFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         payload = {
-            "timestamp": datetime.fromtimestamp(record.created, timezone.utc).isoformat(),
+            "timestamp": datetime.fromtimestamp(
+                record.created, timezone.utc
+            ).isoformat(),
             "severity": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
