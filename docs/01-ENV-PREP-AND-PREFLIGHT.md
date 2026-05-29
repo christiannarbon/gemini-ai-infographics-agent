@@ -32,7 +32,7 @@ export REGION="asia-northeast1"
 export AGENT_RUNTIME_LOCATION="us-central1"
 export GOOGLE_CLOUD_LOCATION="global"
 
-export SERVICE_NAME="infographic-agent"
+export SERVICE_NAME="infographics-agent"
 export APP_PASSWORD="CHANGE_ME_TO_YOUR_PASSWORD"
 export APP_SECRET_KEY="$(openssl rand -hex 32)"
 

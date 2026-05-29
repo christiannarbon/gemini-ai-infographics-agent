@@ -10,7 +10,7 @@ from typing import Optional
 from fastapi import Request
 
 
-AUTH_COOKIE_NAME = "gea_workshop_auth"
+AUTH_COOKIE_NAME = "gea_poc_auth"
 DEFAULT_COOKIE_MAX_AGE = 60 * 60 * 8
 
 

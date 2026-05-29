@@ -5,7 +5,7 @@ This guide explains how to deploy the ADK Agent to Google Cloud's Agent Runtime 
 ## What is Agent Runtime Deployment?
 
 For beginners new to the project, here is what `python scripts/agent-runtime-deployment.py` does behind the scenes:
-1. **Dependency Packaging**: It reads the Python requirements/constraints file (e.g., `constraints-workshop.txt`), cleans it up, and prepares the necessary python dependencies.
+1. **Dependency Packaging**: It reads the Python requirements/constraints file (e.g., `constraints.txt`), cleans it up, and prepares the necessary python dependencies.
 2. **Code Uploading**: It packages the local `agent` code directory and uploads it along with dependencies to a staging Google Cloud Storage (GCS) bucket.
 3. **Reasoning Engine Creation**: It registers the Agent on Google Cloud Vertex AI's **Reasoning Engine (Agent Runtime)** service.
 4. **Environment Setup**: It configures the deployed Agent Runtime with runtime environment variables (such as target Gemini text/image models, storage buckets, and API configurations).

@@ -609,7 +609,7 @@ async def _fetch_public_url(url: str) -> httpx.Response:
     headers = {
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Encoding": "identity",
-        "User-Agent": "GeminiEnterpriseAgentWorkshop/1.0",
+        "User-Agent": "GeminiEnterpriseAgentPoC/1.0",
     }
     async with httpx.AsyncClient(
         follow_redirects=False, timeout=15, headers=headers

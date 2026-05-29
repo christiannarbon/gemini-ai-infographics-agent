@@ -149,7 +149,7 @@ class RuntimeAgentClient:
         first_event_seconds = None
         event_shapes: list[str] = []
         for event in remote_agent.stream_query(
-            user_id=os.getenv("AGENT_RUNTIME_USER_ID", "workshop-user"),
+            user_id=os.getenv("AGENT_RUNTIME_USER_ID", "poc-user"),
             message=json.dumps(payload, ensure_ascii=False),
         ):
             event_count += 1

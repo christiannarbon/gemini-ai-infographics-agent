@@ -1,7 +1,7 @@
-# Workshop constraints.
+# Dependency constraints.
 #
 # This file pins the dependency set used by Cloud Shell, Cloud Run, and
-# Agent Runtime so workshop installs do not drift unexpectedly.
+# Agent Runtime so deployments do not drift unexpectedly.
 #
 aiohappyeyeballs==2.6.2
 aiohttp==3.13.5

@@ -58,9 +58,7 @@ def main() -> None:
     staging_bucket = gcs_uri(
         os.getenv("AGENT_RUNTIME_STAGING_BUCKET") or required_env("GCS_BUCKET")
     )
-    requirements_file = os.getenv(
-        "AGENT_RUNTIME_REQUIREMENTS_FILE", "constraints-workshop.txt"
-    )
+    requirements_file = os.getenv("AGENT_RUNTIME_REQUIREMENTS_FILE", "constraints.txt")
 
     # 2. Package python requirements into a clean temporary file
     with tempfile.TemporaryDirectory(prefix="agent-runtime-requirements-") as temp_dir:
@@ -78,7 +76,7 @@ def main() -> None:
             agent=root_agent,
             config={
                 "display_name": display_name,
-                "description": "Infographics workshop ADK agent.",
+                "description": "Infographics PoC ADK agent.",
                 "staging_bucket": staging_bucket,
                 "requirements": runtime_requirements_file,
                 "extra_packages": [

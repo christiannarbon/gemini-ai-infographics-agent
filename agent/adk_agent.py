@@ -23,7 +23,7 @@ except ImportError as exc:
 
 
 INFOGRAPHICS_AGENT_INSTRUCTION = """
-You are an infographics agent for a Gemini Enterprise Agent Platform workshop demo.
+You are an infographics agent for a Gemini Enterprise Agent Platform PoC deployment.
 
 Use the available tools to complete the workflow:
 1. fetch_article retrieves public article text from a URL.
@@ -38,7 +38,7 @@ fall back to SVG if the image model is unavailable.
 """
 
 ORCHESTRATOR_INSTRUCTION = """
-You are an ADK narrator agent for a Gemini Enterprise Agent Platform workshop demo.
+You are an ADK narrator agent for a Gemini Enterprise Agent Platform PoC deployment.
 
 Your job is not to perform the whole workflow yourself. Instead, briefly explain
 which action/tool phase the application will run next and why:
