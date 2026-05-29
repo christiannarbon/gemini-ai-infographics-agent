@@ -86,7 +86,7 @@ def text_model_name() -> str:
 
 
 def image_model_name() -> str:
-    return os.getenv("GEMINI_IMAGE_MODEL", "gemini-3-pro-image-preview")
+    return os.getenv("GEMINI_IMAGE_MODEL", "gemini-3-pro-image")
 
 
 async def fetch_article(url: str) -> dict[str, str]:
@@ -848,6 +848,7 @@ def display_model_name(model_name: str) -> str:
     labels = {
         "gemini-2.5-flash-image": "gemini-2.5-flash-image (Nano Banana)",
         "gemini-3-pro-image-preview": "gemini-3-pro-image-preview (Nano Banana Pro)",
+        "gemini-3-pro-image": "gemini-3-pro-image (Nano Banana Pro)",
     }
     return labels.get(model_name, model_name)
 

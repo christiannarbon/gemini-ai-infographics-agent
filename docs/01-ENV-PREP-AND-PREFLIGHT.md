@@ -37,7 +37,7 @@ export APP_PASSWORD="CHANGE_ME_TO_YOUR_PASSWORD"
 export APP_SECRET_KEY="$(openssl rand -hex 32)"
 
 export GEMINI_TEXT_MODEL="gemini-3.5-flash"
-export GEMINI_IMAGE_MODEL="gemini-3-pro-image-preview"
+export GEMINI_IMAGE_MODEL="gemini-3-pro-image"
 export ARTICLE_FETCH_MAX_BYTES="2000000"
 
 export GCS_BUCKET="${PROJECT_ID}-infographics-artifacts"
