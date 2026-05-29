@@ -15,8 +15,8 @@
          class="rounded-md border border-red-200 bg-white px-4 py-2 text-sm font-bold text-red-800 transition hover:bg-red-100">
         Start Over from URL
       </a>
-      {% if job.kind == "graphic" and job.summary %}
-        <form hx-post="/graphics"
+      {% if job.kind == "infographics" and job.summary %}
+        <form hx-post="/infographics"
               hx-target="closest section"
               hx-swap="outerHTML"
               hx-disabled-elt="find button[type='submit']">

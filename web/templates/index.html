@@ -163,14 +163,14 @@
           document.getElementById("url-form").className = "url-form";
           document.getElementById("workspace").classList.remove("hidden");
         }
-        if (event.target && event.target.matches("[data-graphic-workflow]")) {
+        if (event.target && event.target.matches("[data-infographics-workflow]")) {
           lockSummaryReview(event.target.closest("[data-summary-review]"));
           setWorkflowStep(3);
         }
       });
 
       document.body.addEventListener("htmx:afterRequest", function (event) {
-        if (event.target && event.target.matches("[data-graphic-workflow]") && !event.detail.successful) {
+        if (event.target && event.target.matches("[data-infographics-workflow]") && !event.detail.successful) {
           const review = event.target.closest("[data-summary-review]");
           unlockSummaryReview(review);
           setWorkflowStep(2);
@@ -179,7 +179,7 @@
 
       document.body.addEventListener("htmx:afterSwap", function (event) {
         const target = event.detail.target;
-        const stage = document.getElementById("graphic-stage");
+        const stage = document.getElementById("infographics-stage");
         const updatedStep =
           (stage && stage.querySelector("[data-workflow-step]")) ||
           (target && target.matches && target.matches("[data-workflow-step]") && target) ||

@@ -19,13 +19,13 @@
     <h3 class="mt-1 text-xl font-bold text-slate-950">{{ summary.title }}</h3>
     <p class="mt-2 break-all text-sm text-slate-500">{{ summary.url }}</p>
   </div>
-  <form hx-post="/graphics"
-        hx-target="#graphic-stage"
-        hx-swap="innerHTML scroll:#graphic-stage:top"
-        hx-indicator="#graphic-loading"
+  <form hx-post="/infographics"
+        hx-target="#infographics-stage"
+        hx-swap="innerHTML scroll:#infographics-stage:top"
+        hx-indicator="#infographics-loading"
         hx-disabled-elt="find button[type='submit']"
         class="space-y-4"
-        data-graphic-workflow>
+        data-infographics-workflow>
     <input type="hidden" name="session_id" value="{{ summary.session_id }}" />
     <div class="summary-card-grid grid gap-4 pb-14 lg:grid-cols-2">
       <label class="block rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -44,7 +44,7 @@
       </label>
     </div>
     <div class="lock-hidden sticky bottom-3 z-10 -mx-2 flex flex-col gap-3 bg-slate-50/90 px-2 py-2 backdrop-blur sm:flex-row sm:items-center sm:justify-end">
-      <span id="graphic-loading"
+      <span id="infographics-loading"
             class="htmx-indicator text-sm font-medium text-blue-700">Agent is generating the visual plan and image...</span>
       <button type="submit"
               class="inline-flex items-center justify-center rounded-md bg-blue-700 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-blue-700/20 transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60">
@@ -52,5 +52,5 @@
       </button>
     </div>
   </form>
-  <div id="graphic-stage" class="mt-4 scroll-mt-24"></div>
+  <div id="infographics-stage" class="mt-4 scroll-mt-24"></div>
 </section>
