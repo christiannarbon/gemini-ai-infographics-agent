@@ -1,5 +1,29 @@
 #!/usr/bin/env bash
-# deployment script to deploy the web frontend onto Google Cloud Run.
+#
+# =========================================================================
+# Cloud Run Deployment Script for Gemini AI Infographics Agent Platform
+# =========================================================================
+#
+# What this script does:
+# ----------------------
+# This script deploys the FastAPI web application frontend to Google Cloud Run,
+# compiling and containerizing the local source code in the cloud.
+#
+# What we configure:
+# ------------------
+# 1. Environment Verification: Validates that required credentials (such as
+#    passwords and secret keys) are set.
+# 2. Config Injection: Bundles environment configurations (such as model IDs,
+#    GCS buckets, and API settings) to pass to the running container.
+# 3. Serverless Deployment: Deploys the service to Google Cloud Run with
+#    CPU throttling disabled and startup/liveness probes configured.
+#
+# How to run this:
+# ----------------
+#   ./scripts/cloud-run-deployment.sh
+#
+# =========================================================================
+
 set -euo pipefail
 
 # 1. Ensure required environment variables are set.

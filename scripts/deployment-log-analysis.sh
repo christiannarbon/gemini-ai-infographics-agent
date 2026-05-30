@@ -1,5 +1,31 @@
 #!/usr/bin/env bash
-# diagnostic script to analyze configurations, statuses, and log metrics.
+#
+# =========================================================================
+# Deployment Log Analysis Script for Gemini AI Infographics Agent Platform
+# =========================================================================
+#
+# What this script does:
+# ----------------------
+# This script is a diagnostics utility designed to scan, analyze, and aggregate
+# deployment settings and runtime execution logs from Google Cloud.
+#
+# What we check:
+# --------------
+# 1. Summary Scan: Quickly validates the status of Cloud Run service endpoints,
+#    GCS buckets, Agent Runtime configurations, and recent log errors.
+# 2. Config Details: Inspects environment configurations injected into Cloud Run
+#    revisions (redacting sensitive passwords and keys).
+# 3. Execution Timings: Queries Cloud Logging to analyze task durations (such as
+#    generation and runtime engine call times).
+# 4. Stream Logs: Retrieves the most recent execution logs directly from Cloud Run
+#    revisions and Vertex AI Reasoning Engine tasks.
+#
+# How to run this:
+# ----------------
+#   ./scripts/deployment-log-analysis.sh
+#
+# =========================================================================
+
 set -euo pipefail
 
 # 1. Load configuration and defaults.
