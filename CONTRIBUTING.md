@@ -27,6 +27,9 @@ source .venv/bin/activate
 
 # Install dependencies using pinned constraints to prevent version drift
 pip install -r requirements.txt -c constraints.txt
+
+# Set up local git pre-push hooks
+make install-hooks
 ```
 
 ---
@@ -37,14 +40,14 @@ To keep the codebase maintainable, secure, and clean, please adhere to these gui
 
 ### 1. Formatting and Linting
 
-We use **Ruff** for code formatting and linting. Make sure your changes pass all checks before opening a pull request:
+We use **Ruff** for Python code formatting and linting, and **djLint** for HTML template styling. You can manage styling easily via the provided `Makefile` tasks:
 
 ```bash
-# Run code formatter
-.venv/bin/ruff format
+# Run all code formatting and linting checks
+make lint
 
-# Run linter checks
-.venv/bin/ruff check
+# Automatically format and auto-fix style issues
+make format
 ```
 
 ### 2. Naming Conventions
@@ -92,7 +95,7 @@ To test integration with Google Cloud Vertex AI and Cloud Storage:
     git checkout -b feature/your-feature-name
     ```
 2.  **Commit Messages**: Keep commit messages clear, concise, and written in the imperative mood (e.g., `Add pull request template and contributing guide`).
-3.  **Self-Check**: Run `ruff check` and `ruff format --check` to verify code format.
+3.  **Self-Check**: Ensure your code passes linting and formatting checks. Run `make lint` (or `make check-all`). These checks will also run automatically before push if you installed the pre-push hook via `make install-hooks`.
 4.  **Open a PR**: Open a pull request against the `main` branch of this repository. Fill out the pull request template to explain what the change accomplishes.
 
 Thank you for contributing!

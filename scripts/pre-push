@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+#
+# =========================================================================
+# Git pre-push Hook for Gemini AI Infographics Agent Platform
+# =========================================================================
+#
+# What this hook does:
+# --------------------
+# This script is executed automatically by Git before any "git push" command.
+# It runs code linting and style checks (via 'make lint') to ensure that
+# code violating formatting standards is not accidentally pushed to the remote.
+#
+# If the checks fail:
+# -------------------
+# The push is aborted. You must fix the lint/format errors (e.g. by running
+# 'make format') before you can push your changes.
+#
+# Customizing / Bypassing:
+# ------------------------
+# If you ever need to bypass this hook (e.g. emergency push), run:
+#   git push --no-verify
+# =========================================================================
+
+# Exit immediately if a command exits with a non-zero status
+set -e
+
+# Navigate to the git repository root directory
+cd "$(git rev-parse --show-toplevel)"
+
+echo "=================================================="
+echo "Running pre-push checks via Makefile..."
+echo "=================================================="
+
+# Execute the lint target in the Makefile
+if ! make lint; then
+  echo "=================================================="
+  echo "ERROR: Pre-push checks failed!"
+  echo "Please run 'make format' to auto-fix code style issues."
+  echo "You can bypass this check using: git push --no-verify"
+  echo "=================================================="
+  exit 1
+fi
+
+echo "=================================================="
+echo "All pre-push checks passed successfully!"
+echo "=================================================="
+exit 0
