@@ -1,5 +1,5 @@
 {% if steps is not defined %}
-  {% set steps = graphic.progress if graphic is defined else summary.progress %}
+  {% set steps = infographics.progress if infographics is defined else summary.progress %}
 {% endif %}
 <div class="{% if progress_shell | default('panel') == 'plain' %}progress-log{% else %}rounded-lg border border-slate-200 bg-white p-4{% endif %}">
   <h3 class="text-sm font-bold text-slate-700">{{ progress_title | default("Agent Progress") }}</h3>
