@@ -57,7 +57,7 @@ export AGENT_RUNTIME_RESOURCE_NAME="PASTE_HERE"
 ```bash
 # Paste the email address following "effective_identity="
 export AGENT_RUNTIME_EFFECTIVE_IDENTITY="PASTE_HERE"
-./scripts/configure-runtime-iam.sh
+./scripts/runtime-iam-config.sh
 ```
 
 ---
