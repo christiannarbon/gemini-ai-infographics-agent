@@ -6,7 +6,6 @@ import gzip
 import html
 import ipaddress
 import logging
-import os
 import re
 import socket
 import zlib
@@ -15,6 +14,8 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Literal, Optional, Union
 from urllib.parse import urljoin, urlparse
+
+from agent.config import get_settings
 
 import httpx
 from pydantic import BaseModel, Field
@@ -26,6 +27,12 @@ except ImportError:
 
 
 logger = logging.getLogger(__name__)
+
+
+def _settings():
+    get_settings.cache_clear()
+    return get_settings()
+
 
 DEFAULT_ARTICLE_FETCH_MAX_BYTES = 2_000_000
 RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
@@ -78,15 +85,15 @@ class GeneratedImage:
 
 
 def is_mock_mode() -> bool:
-    return os.getenv("MOCK_MODE", "true").lower() in {"1", "true", "yes", "on"}
+    return _settings().mock_mode
 
 
 def text_model_name() -> str:
-    return os.getenv("GEMINI_TEXT_MODEL", "gemini-3.5-flash")
+    return _settings().gemini_text_model
 
 
 def image_model_name() -> str:
-    return os.getenv("GEMINI_IMAGE_MODEL", "gemini-3-pro-image")
+    return _settings().gemini_image_model
 
 
 async def fetch_article(url: str) -> dict[str, str]:
@@ -497,7 +504,7 @@ async def save_artifact(session_id: str, svg: str) -> str:
 
 async def save_artifact_with_url(session_id: str, svg: str) -> tuple[str, str]:
     """Save a generated SVG artifact and return a browser URL when available."""
-    artifact_dir = Path(os.getenv("ARTIFACT_DIR", "artifacts"))
+    artifact_dir = Path(_settings().artifact_dir)
     artifact_dir.mkdir(parents=True, exist_ok=True)
     path = artifact_dir / f"{session_id}.svg"
     path.write_text(svg, encoding="utf-8")
@@ -526,7 +533,7 @@ async def save_binary_artifact_with_url(
     mime_type: str,
 ) -> tuple[str, str]:
     """Save a generated binary artifact and return a browser URL when available."""
-    artifact_dir = Path(os.getenv("ARTIFACT_DIR", "artifacts"))
+    artifact_dir = Path(_settings().artifact_dir)
     artifact_dir.mkdir(parents=True, exist_ok=True)
     path = artifact_dir / f"{session_id}{_extension_for_mime_type(mime_type)}"
     path.write_bytes(data)
@@ -539,14 +546,14 @@ def artifact_url_for_path(artifact_path: str) -> str:
 
 
 async def _upload_artifact_to_gcs(path: Path, content_type: str) -> str:
-    bucket_name = os.getenv("GCS_BUCKET")
+    bucket_name = _settings().gcs_bucket
     if not bucket_name:
         return ""
 
     def upload() -> str:
         from google.cloud import storage
 
-        prefix = os.getenv("GCS_ARTIFACT_PREFIX", "artifacts").strip("/")
+        prefix = _settings().gcs_artifact_prefix.strip("/")
         object_name = f"{prefix}/{path.name}" if prefix else path.name
         client = storage.Client()
         blob = client.bucket(bucket_name).blob(object_name)
@@ -574,11 +581,7 @@ def _generate_signed_artifact_url(blob) -> str:
 
 
 def signed_artifact_url_ttl_seconds() -> int:
-    value = os.getenv("GCS_SIGNED_URL_TTL_SECONDS", "28800")
-    try:
-        return max(60, int(value))
-    except ValueError:
-        return 28800
+    return _settings().gcs_signed_url_ttl_seconds
 
 
 def _signed_url_credentials():
@@ -591,7 +594,7 @@ def _signed_url_credentials():
     auth_request = Request()
     credentials.refresh(auth_request)
 
-    service_account_email = os.getenv("GCS_SIGNING_SERVICE_ACCOUNT") or getattr(
+    service_account_email = _settings().gcs_signing_service_account or getattr(
         credentials,
         "service_account_email",
         "",
@@ -770,8 +773,8 @@ def close_genai_client() -> None:
 
 
 async def _call_with_retries(operation_factory, operation: str):
-    max_attempts = max(1, int(os.getenv("GEMINI_MAX_ATTEMPTS", "3")))
-    base_delay = max(0.1, float(os.getenv("GEMINI_RETRY_BASE_DELAY_SECONDS", "0.6")))
+    max_attempts = _settings().gemini_max_attempts
+    base_delay = _settings().gemini_retry_base_delay_seconds
     last_error: Optional[Exception] = None
     for attempt in range(1, max_attempts + 1):
         try:
@@ -816,32 +819,15 @@ def _exception_status_code(exc: Exception) -> Optional[int]:
 
 
 def has_gemini_credentials() -> bool:
-    if os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"):
-        return True
-    return _use_vertex_ai()
+    return _settings().has_gemini_credentials
 
 
 def _use_vertex_ai() -> bool:
-    return os.getenv("GOOGLE_GENAI_USE_VERTEXAI", "").lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
+    return _settings().use_vertex_ai
 
 
 def article_fetch_max_bytes() -> int:
-    try:
-        return max(
-            1024,
-            int(
-                os.getenv(
-                    "ARTICLE_FETCH_MAX_BYTES", str(DEFAULT_ARTICLE_FETCH_MAX_BYTES)
-                )
-            ),
-        )
-    except ValueError:
-        return DEFAULT_ARTICLE_FETCH_MAX_BYTES
+    return _settings().article_fetch_max_bytes
 
 
 def display_model_name(model_name: str) -> str:
