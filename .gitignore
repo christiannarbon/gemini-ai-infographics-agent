@@ -147,3 +147,6 @@ cython_debug/
 # My scribbles and reminders
 chris_notes/*
 chris_reminders/*
+
+artifacts/*
+!artifacts/.gitkeep
