@@ -15,11 +15,6 @@ ProgressCallback = Callable[[list[ProgressStep]], Optional[Awaitable[None]]]
 logger = logging.getLogger(__name__)
 
 
-def _settings():
-    get_settings.cache_clear()
-    return get_settings()
-
-
 async def summarize_url(
     url: str, on_progress: Optional[ProgressCallback] = None
 ) -> SummaryResult:
@@ -219,7 +214,7 @@ async def _emit(
 async def _mock_step_delay() -> None:
     if not tools.is_mock_mode():
         return
-    delay = _settings().mock_step_delay
+    delay = get_settings().mock_step_delay
     if delay > 0:
         await asyncio.sleep(delay)
 
