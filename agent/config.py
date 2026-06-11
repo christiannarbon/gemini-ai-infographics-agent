@@ -172,6 +172,11 @@ class Settings(BaseSettings):
             return True
         return self.use_vertex_ai
 
+    @property
+    def is_production(self) -> bool:
+        """Returns True if the application is running in a production environment."""
+        return bool(self.k_service) or self.app_env.lower() == "production"
+
 
 @lru_cache
 def _get_settings_cached() -> Settings:
