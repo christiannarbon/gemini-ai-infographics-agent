@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import sys
 from datetime import datetime, timezone
+
+from agent.config import get_settings
 
 
 class JsonLogFormatter(logging.Formatter):
@@ -23,9 +24,10 @@ class JsonLogFormatter(logging.Formatter):
 
 
 def configure_logging() -> None:
-    level = os.getenv("LOG_LEVEL", "INFO").upper()
+    settings = get_settings()
+    level = settings.log_level.upper()
     handler = logging.StreamHandler(sys.stdout)
-    if os.getenv("APP_LOG_FORMAT", "json").lower() == "json":
+    if settings.app_log_format.lower() == "json":
         handler.setFormatter(JsonLogFormatter())
     else:
         handler.setFormatter(logging.Formatter("%(levelname)s %(name)s %(message)s"))
