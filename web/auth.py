@@ -3,11 +3,12 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
-import os
 import time
 from typing import Optional
 
 from fastapi import Request
+
+from agent.config import get_settings
 
 
 AUTH_COOKIE_NAME = "gea_poc_auth"
@@ -15,11 +16,11 @@ DEFAULT_COOKIE_MAX_AGE = 60 * 60 * 8
 
 
 def auth_password() -> str:
-    return os.getenv("APP_PASSWORD", "")
+    return get_settings().app_password
 
 
 def auth_secret_key() -> str:
-    return os.getenv("APP_SECRET_KEY", "")
+    return get_settings().app_secret_key
 
 
 def auth_enabled() -> bool:
@@ -27,10 +28,7 @@ def auth_enabled() -> bool:
 
 
 def assert_auth_config() -> None:
-    production = (
-        os.getenv("K_SERVICE") or os.getenv("APP_ENV", "").lower() == "production"
-    )
-    if not production:
+    if not get_settings().is_production:
         return
     if not auth_password():
         raise RuntimeError(
@@ -43,11 +41,7 @@ def assert_auth_config() -> None:
 
 
 def cookie_max_age() -> int:
-    value = os.getenv("AUTH_COOKIE_MAX_AGE_SECONDS", str(DEFAULT_COOKIE_MAX_AGE))
-    try:
-        return max(60, int(value))
-    except ValueError:
-        return DEFAULT_COOKIE_MAX_AGE
+    return get_settings().auth_cookie_max_age_seconds
 
 
 def create_auth_cookie(now: Optional[int] = None) -> str:
