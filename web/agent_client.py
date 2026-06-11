@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import re
 import asyncio
 import time
 from typing import Optional
 from typing import Protocol
 from uuid import uuid4
+
+from agent.config import get_settings
 
 from agent.actions import (
     ProgressCallback,
@@ -149,7 +150,7 @@ class RuntimeAgentClient:
         first_event_seconds = None
         event_shapes: list[str] = []
         for event in remote_agent.stream_query(
-            user_id=os.getenv("AGENT_RUNTIME_USER_ID", "poc-user"),
+            user_id=get_settings().agent_runtime_user_id,
             message=json.dumps(payload, ensure_ascii=False),
         ):
             event_count += 1
@@ -187,7 +188,8 @@ class RuntimeAgentClient:
         if self._remote_agent is not None:
             return self._remote_agent
 
-        resource_name = os.getenv("AGENT_RUNTIME_RESOURCE_NAME")
+        settings = get_settings()
+        resource_name = settings.agent_runtime_resource_name
         if not resource_name:
             raise RuntimeError(
                 "Set AGENT_RUNTIME_RESOURCE_NAME when AGENT_BACKEND=runtime."
@@ -202,8 +204,8 @@ class RuntimeAgentClient:
         import vertexai
 
         client = vertexai.Client(
-            project=os.getenv("GOOGLE_CLOUD_PROJECT") or os.getenv("PROJECT_ID"),
-            location=os.getenv("AGENT_RUNTIME_LOCATION")
+            project=settings.google_cloud_project or settings.project_id,
+            location=settings.agent_runtime_location
             or _location_from_resource_name(resource_name),
         )
         self._remote_agent = client.agent_engines.get(name=resource_name)
@@ -291,7 +293,7 @@ class AdkAgentClient(LocalAgentClient):
 
 
 def build_agent_client() -> AgentClient:
-    backend = os.getenv("AGENT_BACKEND", "local").lower()
+    backend = get_settings().agent_backend.lower()
     if backend == "adk":
         return AdkAgentClient()
     if backend == "runtime":
