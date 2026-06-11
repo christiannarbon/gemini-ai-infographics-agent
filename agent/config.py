@@ -9,7 +9,7 @@ def parse_truthy_bool(v: Any) -> bool:
     if isinstance(v, bool):
         return v
     if isinstance(v, str):
-        return v.lower() in {"1", "true", "yes", "on"}
+        return v.strip().lower() in {"1", "true", "yes", "on"}
     return bool(v)
 
 
@@ -113,7 +113,7 @@ class Settings(BaseSettings):
         if v is None:
             return 2_000_000
         try:
-            val = int(v)
+            val = int(float(v))
             return max(1024, val)
         except (ValueError, TypeError):
             return 2_000_000
@@ -124,7 +124,7 @@ class Settings(BaseSettings):
         if v is None:
             return 3
         try:
-            return max(1, int(v))
+            return max(1, int(float(v)))
         except (ValueError, TypeError):
             return 3
 
@@ -144,7 +144,7 @@ class Settings(BaseSettings):
         if v is None:
             return 28800
         try:
-            return max(60, int(v))
+            return max(60, int(float(v)))
         except (ValueError, TypeError):
             return 28800
 
@@ -154,7 +154,7 @@ class Settings(BaseSettings):
         if v is None:
             return 28800
         try:
-            return max(60, int(v))
+            return max(60, int(float(v)))
         except (ValueError, TypeError):
             return 28800
 
@@ -174,6 +174,18 @@ class Settings(BaseSettings):
 
 
 @lru_cache
+def _get_settings_cached() -> Settings:
+    return Settings()
+
+
 def get_settings() -> Settings:
     """Returns a cached instance of the Settings object."""
-    return Settings()
+    import sys
+
+    if "pytest" in sys.modules:
+        _get_settings_cached.cache_clear()
+    return _get_settings_cached()
+
+
+# Expose cache_clear on the get_settings function for backward compatibility
+get_settings.cache_clear = _get_settings_cached.cache_clear
