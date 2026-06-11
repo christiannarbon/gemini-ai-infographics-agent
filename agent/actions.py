@@ -2,17 +2,22 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 import time
 from collections.abc import Awaitable, Callable
 from typing import Optional
 from uuid import uuid4
 
+from agent.config import get_settings
 from .models import GraphicResult, ProgressStep, SummaryResult
 from . import tools
 
 ProgressCallback = Callable[[list[ProgressStep]], Optional[Awaitable[None]]]
 logger = logging.getLogger(__name__)
+
+
+def _settings():
+    get_settings.cache_clear()
+    return get_settings()
 
 
 async def summarize_url(
@@ -214,7 +219,7 @@ async def _emit(
 async def _mock_step_delay() -> None:
     if not tools.is_mock_mode():
         return
-    delay = float(os.getenv("MOCK_STEP_DELAY", "0.45"))
+    delay = _settings().mock_step_delay
     if delay > 0:
         await asyncio.sleep(delay)
 
