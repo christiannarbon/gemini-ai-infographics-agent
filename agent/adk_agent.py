@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import json
-import os
 from typing import Any, Optional
 
+from agent.config import get_settings
 from . import tools
 from .runtime_contract import RuntimeWorkflowResponse
 
@@ -20,6 +20,11 @@ except ImportError as exc:
     Event = None
     types = None
     _ADK_IMPORT_ERROR = exc
+
+
+def _settings():
+    get_settings.cache_clear()
+    return get_settings()
 
 
 INFOGRAPHICS_AGENT_INSTRUCTION = """
@@ -95,7 +100,7 @@ def build_infographics_agent(model: Optional[str] = None) -> Any:
 
     return LlmAgent(
         name="infographics_agent",
-        model=model or os.getenv("GEMINI_TEXT_MODEL", "gemini-3.5-flash"),
+        model=model or _settings().gemini_text_model,
         description="Summarizes blog URLs and creates infographics artifacts.",
         instruction=INFOGRAPHICS_AGENT_INSTRUCTION,
         tools=[
@@ -120,7 +125,7 @@ def build_narrator_agent(model: Optional[str] = None) -> Any:
 
     return LlmAgent(
         name="infographics_narrator",
-        model=model or os.getenv("GEMINI_TEXT_MODEL", "gemini-3.5-flash"),
+        model=model or _settings().gemini_text_model,
         description="Explains the next action in the infographics workflow.",
         instruction=ORCHESTRATOR_INSTRUCTION,
     )
@@ -208,7 +213,7 @@ async def run_narration_turn(
         if event.is_final_response() and event.content and event.content.parts:
             final_text = event.content.parts[0].text or ""
 
-    model = os.getenv("GEMINI_TEXT_MODEL", "gemini-3.5-flash")
+    model = _settings().gemini_text_model
     if final_text:
         return f"adk:{model}:{final_text[:80]}"
     return f"adk:{model}"
