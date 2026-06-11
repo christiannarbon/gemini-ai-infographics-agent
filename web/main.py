@@ -21,6 +21,7 @@ from fastapi.responses import (
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from agent.config import get_settings
 from agent.models import GraphicResult, ProgressStep, SummaryResult
 from agent.tools import close_genai_client
 from web.auth import (
@@ -124,7 +125,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Infographics Agent Demo", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
-app.mount("/artifacts", StaticFiles(directory=Path("artifacts")), name="artifacts")
+app.mount(
+    "/artifacts",
+    StaticFiles(directory=Path(get_settings().artifact_dir)),
+    name="artifacts",
+)
 
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 agent_client = None
