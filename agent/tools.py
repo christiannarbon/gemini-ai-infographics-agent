@@ -29,7 +29,6 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-DEFAULT_ARTICLE_FETCH_MAX_BYTES = 2_000_000
 RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 _GENAI_CLIENT = None
 
