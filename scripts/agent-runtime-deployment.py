@@ -10,6 +10,7 @@ import vertexai
 # Add project root directory to sys.path so we can import modules from 'agent'
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from agent.config import get_settings
 from agent.runtime_entrypoint import root_agent
 
 
@@ -51,6 +52,8 @@ def prepare_runtime_requirements_file(requirements_file: str, output_dir: Path) 
 
 
 def main() -> None:
+    settings = get_settings()
+
     # 1. Read and validate environment variables needed for Agent Runtime deployment
     project_id = required_env("PROJECT_ID")
     location = os.getenv("AGENT_RUNTIME_LOCATION", "us-central1")
@@ -87,33 +90,20 @@ def main() -> None:
                     # Environment variables injected into the deployed Agent Runtime environment
                     "MOCK_MODE": "false",
                     "GOOGLE_GENAI_USE_VERTEXAI": "true",
-                    "GOOGLE_CLOUD_LOCATION": os.getenv(
-                        "GOOGLE_CLOUD_LOCATION", "global"
+                    "GOOGLE_CLOUD_LOCATION": settings.google_cloud_location or "global",
+                    "GEMINI_TEXT_MODEL": settings.gemini_text_model,
+                    "GEMINI_IMAGE_MODEL": settings.gemini_image_model,
+                    "GCS_BUCKET": settings.gcs_bucket or "",
+                    "GCS_ARTIFACT_PREFIX": settings.gcs_artifact_prefix,
+                    "GCS_SIGNED_URL_TTL_SECONDS": str(
+                        settings.gcs_signed_url_ttl_seconds
                     ),
-                    "GEMINI_TEXT_MODEL": os.getenv(
-                        "GEMINI_TEXT_MODEL", "gemini-3.5-flash"
-                    ),
-                    "GEMINI_IMAGE_MODEL": os.getenv(
-                        "GEMINI_IMAGE_MODEL",
-                        "gemini-3-pro-image",
-                    ),
-                    "GCS_BUCKET": os.getenv("GCS_BUCKET", ""),
-                    "GCS_ARTIFACT_PREFIX": os.getenv(
-                        "GCS_ARTIFACT_PREFIX", "artifacts"
-                    ),
-                    "GCS_SIGNED_URL_TTL_SECONDS": os.getenv(
-                        "GCS_SIGNED_URL_TTL_SECONDS", "28800"
-                    ),
-                    "GCS_SIGNING_SERVICE_ACCOUNT": os.getenv(
-                        "GCS_SIGNING_SERVICE_ACCOUNT", ""
-                    ),
-                    "ARTICLE_FETCH_MAX_BYTES": os.getenv(
-                        "ARTICLE_FETCH_MAX_BYTES", "2000000"
-                    ),
-                    "GEMINI_MAX_ATTEMPTS": os.getenv("GEMINI_MAX_ATTEMPTS", "3"),
-                    "GEMINI_RETRY_BASE_DELAY_SECONDS": os.getenv(
-                        "GEMINI_RETRY_BASE_DELAY_SECONDS",
-                        "0.6",
+                    "GCS_SIGNING_SERVICE_ACCOUNT": settings.gcs_signing_service_account
+                    or "",
+                    "ARTICLE_FETCH_MAX_BYTES": str(settings.article_fetch_max_bytes),
+                    "GEMINI_MAX_ATTEMPTS": str(settings.gemini_max_attempts),
+                    "GEMINI_RETRY_BASE_DELAY_SECONDS": str(
+                        settings.gemini_retry_base_delay_seconds
                     ),
                 },
                 "min_instances": 0,
