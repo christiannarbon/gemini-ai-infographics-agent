@@ -816,10 +816,6 @@ def has_gemini_credentials() -> bool:
     return get_settings().has_gemini_credentials
 
 
-def _use_vertex_ai() -> bool:
-    return get_settings().use_vertex_ai
-
-
 def article_fetch_max_bytes() -> int:
     return get_settings().article_fetch_max_bytes
 
