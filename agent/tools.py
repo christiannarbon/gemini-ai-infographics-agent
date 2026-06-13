@@ -9,16 +9,31 @@ import logging
 import re
 import socket
 import zlib
-from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
-from typing import Literal, Optional, Union
+from typing import Optional, Union
 from urllib.parse import urljoin, urlparse
 
-from agent.config import get_settings
-
 import httpx
-from pydantic import BaseModel, Field
+
+from agent.config import get_settings
+from agent.tools.gemini_client import (  # noqa: F401
+    _GENAI_CLIENT,
+    _build_genai_client,
+    _call_with_retries,
+    _exception_status_code,
+    _generate_image_data,
+    _generate_structured_content,
+    _get_genai_client,
+    _is_retryable_exception,
+    close_genai_client,
+)
+from agent.tools.schemas import (  # noqa: F401
+    ArticleSummary,
+    GeneratedImage,
+    StyleDecision,
+    VisualPlan,
+)
 
 try:
     import trafilatura
@@ -28,54 +43,12 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-
-RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
-_GENAI_CLIENT = None
-
 _DEFAULT_PLAN_ITEMS = [
     "Place a short article title at the top",
     "Place a 3-line summary prominently on the left",
     "Place key points as nodes with icons on the right",
     "Organize the relationship between the summary and key points with arrows or lines",
 ]
-
-
-class ArticleSummary(BaseModel):
-    summary_lines: list[str] = Field(
-        description="Exactly three concise English lines that summarize the article's story.",
-        min_length=3,
-        max_length=3,
-    )
-    key_points: list[str] = Field(
-        description="Four to six English article-reading notes for infographic material.",
-        min_length=4,
-        max_length=6,
-    )
-
-
-class VisualPlan(BaseModel):
-    plan_items: list[str] = Field(
-        description="Four to six English composition instructions for an infographic.",
-        min_length=4,
-        max_length=6,
-    )
-
-
-class StyleDecision(BaseModel):
-    style: Literal["business", "pop", "minimal"] = Field(
-        description="Best visual style for this article."
-    )
-    reason: str = Field(
-        description="One concise English sentence explaining the style choice."
-    )
-
-
-@dataclass
-class GeneratedImage:
-    data: bytes
-    mime_type: str
-    backend: str
-    error: str = ""
 
 
 def is_mock_mode() -> bool:
@@ -689,127 +662,6 @@ async def _extract_article_text(raw_html: str, url: str) -> tuple[str, str]:
             return title, _normalize_text(extracted)
 
     return title, _clean_html(raw_html)
-
-
-async def _generate_structured_content(prompt: str, schema_model):
-    if not has_gemini_credentials():
-        raise RuntimeError(
-            "GEMINI_API_KEY, GOOGLE_API_KEY, or Vertex AI Gemini environment settings are required"
-        )
-
-    async_client = _get_genai_client().aio
-    response = await _call_with_retries(
-        lambda: async_client.models.generate_content(
-            model=text_model_name(),
-            contents=prompt,
-            config={
-                "response_mime_type": "application/json",
-                "response_schema": schema_model,
-            },
-        ),
-        operation="gemini-structured-content",
-    )
-    if response.parsed is not None:
-        return response.parsed
-    return schema_model.model_validate_json(response.text)
-
-
-async def _generate_image_data(prompt: str) -> tuple[bytes, str]:
-    from google.genai import types
-
-    async_client = _get_genai_client().aio
-    response = await _call_with_retries(
-        lambda: async_client.models.generate_content(
-            model=image_model_name(),
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_modalities=[types.Modality.TEXT, types.Modality.IMAGE],
-                candidate_count=1,
-            ),
-        ),
-        operation="gemini-image-generation",
-    )
-    if not response.candidates:
-        return b"", "image/png"
-    parts = (
-        response.candidates[0].content.parts if response.candidates[0].content else []
-    )
-    for part in parts:
-        if part.inline_data and part.inline_data.data:
-            data = part.inline_data.data
-            if isinstance(data, str):
-                data = base64.b64decode(data)
-            return data, part.inline_data.mime_type or "image/png"
-    return b"", "image/png"
-
-
-def _get_genai_client():
-    global _GENAI_CLIENT
-    if _GENAI_CLIENT is None:
-        _GENAI_CLIENT = _build_genai_client()
-    return _GENAI_CLIENT
-
-
-def _build_genai_client():
-    from google import genai
-
-    return genai.Client()
-
-
-def close_genai_client() -> None:
-    global _GENAI_CLIENT
-    if _GENAI_CLIENT is None:
-        return
-    close = getattr(_GENAI_CLIENT, "close", None)
-    if close:
-        close()
-    _GENAI_CLIENT = None
-
-
-async def _call_with_retries(operation_factory, operation: str):
-    max_attempts = get_settings().gemini_max_attempts
-    base_delay = get_settings().gemini_retry_base_delay_seconds
-    last_error: Optional[Exception] = None
-    for attempt in range(1, max_attempts + 1):
-        try:
-            return await operation_factory()
-        except Exception as exc:
-            last_error = exc
-            if attempt >= max_attempts or not _is_retryable_exception(exc):
-                raise
-            delay = base_delay * (2 ** (attempt - 1))
-            logger.warning(
-                "%s failed with retryable error on attempt %s/%s; retrying in %.1fs: %s",
-                operation,
-                attempt,
-                max_attempts,
-                delay,
-                exc,
-            )
-            await asyncio.sleep(delay)
-    raise RuntimeError(f"{operation} failed") from last_error
-
-
-def _is_retryable_exception(exc: Exception) -> bool:
-    status_code = _exception_status_code(exc)
-    if status_code in RETRYABLE_STATUS_CODES:
-        return True
-    message = str(exc)
-    return any(str(code) in message for code in RETRYABLE_STATUS_CODES)
-
-
-def _exception_status_code(exc: Exception) -> Optional[int]:
-    for attr in ("status_code", "code"):
-        value = getattr(exc, attr, None)
-        if isinstance(value, int):
-            return value
-        enum_value = getattr(value, "value", None)
-        if isinstance(enum_value, int):
-            return enum_value
-
-    response = getattr(exc, "response", None)
-    status_code = getattr(response, "status_code", None)
-    return status_code if isinstance(status_code, int) else None
 
 
 def has_gemini_credentials() -> bool:
