@@ -56,12 +56,13 @@ def main() -> None:
 
     # 1. Read and validate environment variables needed for Agent Runtime deployment
     project_id = required_env("PROJECT_ID")
-    location = os.getenv("AGENT_RUNTIME_LOCATION", "us-central1")
-    display_name = os.getenv("AGENT_DISPLAY_NAME", "infographics-agent")
+    location = settings.agent_runtime_location
+    display_name = settings.agent_display_name
     staging_bucket = gcs_uri(
         os.getenv("AGENT_RUNTIME_STAGING_BUCKET") or required_env("GCS_BUCKET")
     )
-    requirements_file = os.getenv("AGENT_RUNTIME_REQUIREMENTS_FILE", "constraints.txt")
+    # Default is constraints.txt
+    requirements_file = settings.agent_runtime_requirements_file
 
     # 2. Package python requirements into a clean temporary file
     with tempfile.TemporaryDirectory(prefix="agent-runtime-requirements-") as temp_dir:
