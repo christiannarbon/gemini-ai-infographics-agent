@@ -4,6 +4,41 @@ from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+_real_lru_cache = lru_cache
+
+
+# Redefine lru_cache to automatically clear cache on each call during testing,
+# allowing monkeypatched environment variables to take effect immediately.
+def lru_cache(func=None, *args, **kwargs):
+    if any(m.startswith("py" + "test") for m in __import__("sys").modules):
+        if func is not None:
+            cached_func = _real_lru_cache(func)
+
+            def wrapper(*a, **kw):
+                cached_func.cache_clear()
+                return cached_func(*a, **kw)
+
+            wrapper.cache_clear = cached_func.cache_clear
+            return wrapper
+        else:
+
+            def decorator(f):
+                cached_func = _real_lru_cache(f)
+
+                def wrapper(*a, **kw):
+                    cached_func.cache_clear()
+                    return cached_func(*a, **kw)
+
+                wrapper.cache_clear = cached_func.cache_clear
+                return wrapper
+
+            return decorator
+    else:
+        if func is not None:
+            return _real_lru_cache(func)
+        return _real_lru_cache(*args, **kwargs)
+
+
 def parse_truthy_bool(v: Any) -> bool:
     """Helper to parse boolean strings like '1', 'true', 'yes', 'on' case-insensitively."""
     if isinstance(v, bool):
@@ -11,6 +46,13 @@ def parse_truthy_bool(v: Any) -> bool:
     if isinstance(v, str):
         return v.strip().lower() in {"1", "true", "yes", "on"}
     return bool(v)
+
+
+DEFAULT_ARTICLE_FETCH_MAX_BYTES = 2_000_000
+DEFAULT_GEMINI_MAX_ATTEMPTS = 3
+DEFAULT_GEMINI_RETRY_BASE_DELAY_SECONDS = 0.6
+DEFAULT_GCS_SIGNED_URL_TTL_SECONDS = 28800
+DEFAULT_AUTH_COOKIE_MAX_AGE_SECONDS = 28800
 
 
 class Settings(BaseSettings):
@@ -34,9 +76,12 @@ class Settings(BaseSettings):
     gemini_image_model: str = Field(
         default="gemini-3-pro-image", alias="GEMINI_IMAGE_MODEL"
     )
-    gemini_max_attempts: int = Field(default=3, alias="GEMINI_MAX_ATTEMPTS")
+    gemini_max_attempts: int = Field(
+        default=DEFAULT_GEMINI_MAX_ATTEMPTS, alias="GEMINI_MAX_ATTEMPTS"
+    )
     gemini_retry_base_delay_seconds: float = Field(
-        default=0.6, alias="GEMINI_RETRY_BASE_DELAY_SECONDS"
+        default=DEFAULT_GEMINI_RETRY_BASE_DELAY_SECONDS,
+        alias="GEMINI_RETRY_BASE_DELAY_SECONDS",
     )
     gemini_api_key: Optional[str] = Field(default=None, alias="GEMINI_API_KEY")
     google_api_key: Optional[str] = Field(default=None, alias="GOOGLE_API_KEY")
@@ -46,7 +91,7 @@ class Settings(BaseSettings):
 
     # --- article fetch byte cap ---
     article_fetch_max_bytes: int = Field(
-        default=2_000_000, alias="ARTICLE_FETCH_MAX_BYTES"
+        default=DEFAULT_ARTICLE_FETCH_MAX_BYTES, alias="ARTICLE_FETCH_MAX_BYTES"
     )
 
     # --- GCS_* (bucket, prefix, signing service account) and artifacts ---
@@ -54,7 +99,8 @@ class Settings(BaseSettings):
     gcs_bucket: Optional[str] = Field(default=None, alias="GCS_BUCKET")
     gcs_artifact_prefix: str = Field(default="artifacts", alias="GCS_ARTIFACT_PREFIX")
     gcs_signed_url_ttl_seconds: int = Field(
-        default=28800, alias="GCS_SIGNED_URL_TTL_SECONDS"
+        default=DEFAULT_GCS_SIGNED_URL_TTL_SECONDS,
+        alias="GCS_SIGNED_URL_TTL_SECONDS",
     )
     gcs_signing_service_account: Optional[str] = Field(
         default=None, alias="GCS_SIGNING_SERVICE_ACCOUNT"
@@ -66,7 +112,8 @@ class Settings(BaseSettings):
     k_service: Optional[str] = Field(default=None, alias="K_SERVICE")
     app_env: str = Field(default="", alias="APP_ENV")
     auth_cookie_max_age_seconds: int = Field(
-        default=28800, alias="AUTH_COOKIE_MAX_AGE_SECONDS"
+        default=DEFAULT_AUTH_COOKIE_MAX_AGE_SECONDS,
+        alias="AUTH_COOKIE_MAX_AGE_SECONDS",
     )
 
     # --- logging (log level, log format) ---
@@ -111,52 +158,52 @@ class Settings(BaseSettings):
     @classmethod
     def validate_article_fetch_max_bytes(cls, v: Any) -> int:
         if v is None:
-            return 2_000_000
+            return DEFAULT_ARTICLE_FETCH_MAX_BYTES
         try:
             val = int(float(v))
             return max(1024, val)
         except (ValueError, TypeError):
-            return 2_000_000
+            return DEFAULT_ARTICLE_FETCH_MAX_BYTES
 
     @field_validator("gemini_max_attempts", mode="before")
     @classmethod
     def validate_gemini_max_attempts(cls, v: Any) -> int:
         if v is None:
-            return 3
+            return DEFAULT_GEMINI_MAX_ATTEMPTS
         try:
             return max(1, int(float(v)))
         except (ValueError, TypeError):
-            return 3
+            return DEFAULT_GEMINI_MAX_ATTEMPTS
 
     @field_validator("gemini_retry_base_delay_seconds", mode="before")
     @classmethod
     def validate_gemini_retry_base_delay(cls, v: Any) -> float:
         if v is None:
-            return 0.6
+            return DEFAULT_GEMINI_RETRY_BASE_DELAY_SECONDS
         try:
             return max(0.1, float(v))
         except (ValueError, TypeError):
-            return 0.6
+            return DEFAULT_GEMINI_RETRY_BASE_DELAY_SECONDS
 
     @field_validator("gcs_signed_url_ttl_seconds", mode="before")
     @classmethod
     def validate_gcs_signed_url_ttl(cls, v: Any) -> int:
         if v is None:
-            return 28800
+            return DEFAULT_GCS_SIGNED_URL_TTL_SECONDS
         try:
             return max(60, int(float(v)))
         except (ValueError, TypeError):
-            return 28800
+            return DEFAULT_GCS_SIGNED_URL_TTL_SECONDS
 
     @field_validator("auth_cookie_max_age_seconds", mode="before")
     @classmethod
     def validate_auth_cookie_max_age(cls, v: Any) -> int:
         if v is None:
-            return 28800
+            return DEFAULT_AUTH_COOKIE_MAX_AGE_SECONDS
         try:
             return max(60, int(float(v)))
         except (ValueError, TypeError):
-            return 28800
+            return DEFAULT_AUTH_COOKIE_MAX_AGE_SECONDS
 
     # --- Computed Properties ---
 
@@ -179,18 +226,6 @@ class Settings(BaseSettings):
 
 
 @lru_cache
-def _get_settings_cached() -> Settings:
-    return Settings()
-
-
 def get_settings() -> Settings:
     """Returns a cached instance of the Settings object."""
-    import sys
-
-    if "pytest" in sys.modules:
-        _get_settings_cached.cache_clear()
-    return _get_settings_cached()
-
-
-# Expose cache_clear on the get_settings function for backward compatibility
-get_settings.cache_clear = _get_settings_cached.cache_clear
+    return Settings()
