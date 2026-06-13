@@ -12,7 +12,6 @@ from agent.config import get_settings
 
 
 AUTH_COOKIE_NAME = "gea_poc_auth"
-DEFAULT_COOKIE_MAX_AGE = 60 * 60 * 8
 
 
 def auth_password() -> str:
