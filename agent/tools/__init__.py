@@ -10,13 +10,13 @@ from agent.tools.fetcher import (  # noqa: F401
     _extract_title,
     _fetch_public_url,
     _normalize_text,
+    _pin_connection,
     _read_limited_response,
     _reject_private_address,
     _resolve_host,
     fetch_article,
 )
 from agent.tools.gemini_client import (  # noqa: F401
-    _GENAI_CLIENT,
     _build_genai_client,
     _call_with_retries,
     _exception_status_code,
