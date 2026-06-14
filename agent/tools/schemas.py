@@ -41,4 +41,3 @@ class GeneratedImage:
     data: bytes
     mime_type: str
     backend: str
-    error: str = ""
