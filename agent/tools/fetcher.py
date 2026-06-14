@@ -4,7 +4,6 @@ import asyncio
 import gzip
 import html
 import ipaddress
-import logging
 import re
 import socket
 import zlib
@@ -19,8 +18,6 @@ try:
     import trafilatura
 except ImportError:
     trafilatura = None
-
-logger = logging.getLogger(__name__)
 
 
 async def fetch_article(url: str) -> dict[str, str]:
@@ -63,30 +60,64 @@ async def _fetch_public_url(url: str) -> httpx.Response:
         follow_redirects=False, timeout=15, headers=headers
     ) as client:
         for _ in range(5):
-            await _assert_public_http_url(current_url)
-            async with client.stream("GET", current_url) as response:
+            # Resolve and validate, then pin the connection to the validated IP
+            # so httpx does not perform its own (potentially rebound) lookup.
+            pinned_ip = await _assert_public_http_url(current_url)
+            connect_url, extra_headers, extensions = _pin_connection(
+                current_url, pinned_ip
+            )
+            async with client.stream(
+                "GET", connect_url, headers=extra_headers, extensions=extensions
+            ) as response:
                 if response.is_redirect:
                     location = response.headers.get("location")
                     if not location:
                         break
-                    current_url = urljoin(str(response.url), location)
+                    # Join against the logical (hostname) URL, not the pinned-IP one.
+                    current_url = urljoin(current_url, location)
                     continue
                 response.raise_for_status()
                 raw_content = await _read_limited_response(
                     response, article_fetch_max_bytes()
                 )
                 content = _decode_response_content(raw_content, response.headers)
-                headers = httpx.Headers(response.headers)
-                headers.pop("content-encoding", None)
-                headers["content-length"] = str(len(content))
+                response_headers = httpx.Headers(response.headers)
+                response_headers.pop("content-encoding", None)
+                response_headers["content-length"] = str(len(content))
                 return httpx.Response(
                     response.status_code,
-                    headers=headers,
+                    headers=response_headers,
                     content=content,
-                    request=response.request,
+                    request=httpx.Request("GET", current_url),
                     extensions=response.extensions,
                 )
     raise ValueError("Too many redirects while fetching article")
+
+
+def _pin_connection(
+    url: str, pinned_ip: Optional[str]
+) -> tuple[str, dict[str, str], dict[str, str]]:
+    """Rewrite a URL to connect to a validated IP while preserving the host.
+
+    Returns the connect URL (host replaced by the pinned IP), the extra request
+    headers (a ``Host`` header carrying the original host), and request
+    extensions (``sni_hostname`` so TLS SNI and certificate verification still
+    use the original hostname). When ``pinned_ip`` is None the URL is an IP
+    literal already and is returned unchanged.
+    """
+    if pinned_ip is None:
+        return url, {}, {}
+
+    parsed = urlparse(url)
+    host = parsed.hostname or ""
+    host_header = host if parsed.port is None else f"{host}:{parsed.port}"
+
+    ip_netloc = f"[{pinned_ip}]" if ":" in pinned_ip else pinned_ip
+    if parsed.port is not None:
+        ip_netloc += f":{parsed.port}"
+    connect_url = parsed._replace(netloc=ip_netloc).geturl()
+
+    return connect_url, {"Host": host_header}, {"sni_hostname": host}
 
 
 async def _read_limited_response(response: httpx.Response, max_bytes: int) -> bytes:
@@ -111,17 +142,13 @@ def _decode_response_content(raw_content: bytes, headers: httpx.Headers) -> byte
         if encoding == "deflate":
             return zlib.decompress(raw_content)
     except (OSError, zlib.error) as exc:
-        logger.warning(
-            "Ignoring invalid Content-Encoding=%s while fetching article: %s",
-            encoding,
-            exc,
-        )
-        return raw_content
+        # We request Accept-Encoding: identity, so a body we cannot decode is
+        # off-spec. Fail rather than hand undecoded bytes to the HTML parser.
+        raise ValueError(
+            f"Failed to decode Content-Encoding={encoding} response body"
+        ) from exc
 
-    logger.warning(
-        "Ignoring unsupported Content-Encoding=%s while fetching article", encoding
-    )
-    return raw_content
+    raise ValueError(f"Unsupported Content-Encoding={encoding} in response body")
 
 
 async def _extract_article_text(raw_html: str, url: str) -> tuple[str, str]:
@@ -142,7 +169,12 @@ async def _extract_article_text(raw_html: str, url: str) -> tuple[str, str]:
     return title, _clean_html(raw_html)
 
 
-async def _assert_public_http_url(url: str) -> None:
+async def _assert_public_http_url(url: str) -> Optional[str]:
+    """Validate that ``url`` points at a public host.
+
+    Returns the validated IP address the connection must be pinned to (closing
+    the DNS-rebinding TOCTOU), or None when the URL host is already an IP literal.
+    """
     parsed = urlparse(url)
     if parsed.scheme not in {"http", "https"}:
         raise ValueError("Only http and https URLs are allowed")
@@ -157,7 +189,7 @@ async def _assert_public_http_url(url: str) -> None:
 
     if literal_ip:
         _reject_private_address(literal_ip)
-        return
+        return None
 
     addresses = await _resolve_host(host)
     if not addresses:
@@ -165,6 +197,8 @@ async def _assert_public_http_url(url: str) -> None:
 
     for address in addresses:
         _reject_private_address(ipaddress.ip_address(address))
+
+    return next(iter(addresses))
 
 
 async def _resolve_host(host: str) -> set[str]:
@@ -198,8 +232,7 @@ def _clean_html(raw_html: str) -> str:
         r"<(script|style).*?</\1>", " ", raw_html, flags=re.I | re.S
     )
     without_tags = re.sub(r"<[^>]+>", " ", without_scripts)
-    unescaped = html.unescape(without_tags)
-    return _normalize_text(unescaped)
+    return _normalize_text(without_tags)
 
 
 def _extract_title(raw_html: str) -> Optional[str]:
