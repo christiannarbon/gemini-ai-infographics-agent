@@ -194,6 +194,7 @@ def test_fallback_svg_keeps_heading_and_summary_text_separate():
 
 
 def test_graphic_prompt_excludes_workshop_runtime_scaffolding(monkeypatch):
+    from agent.tools import gemini_client
     from agent import tools
     import asyncio
 
@@ -205,7 +206,7 @@ def test_graphic_prompt_excludes_workshop_runtime_scaffolding(monkeypatch):
 
     monkeypatch.setenv("MOCK_MODE", "false")
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
-    monkeypatch.setattr(tools, "_generate_image_data", fake_generate_image_data)
+    monkeypatch.setattr(gemini_client, "_generate_image_data", fake_generate_image_data)
 
     image = asyncio.run(
         tools.generate_image_artifact(
@@ -844,16 +845,74 @@ def test_read_limited_response_rejects_oversized_body():
         asyncio.run(_read_limited_response(Response(), 5))
 
 
-def test_invalid_content_encoding_falls_back_to_raw_body():
+def test_invalid_content_encoding_raises():
+    from agent.tools import _decode_response_content
+    import httpx
+    import pytest
+
+    body = b"<html><title>Plain HTML</title></html>"
+
+    # Undecodable gzip body must fail rather than be parsed as raw HTML.
+    with pytest.raises(ValueError, match="Failed to decode Content-Encoding=gzip"):
+        _decode_response_content(body, httpx.Headers({"content-encoding": "gzip"}))
+
+
+def test_unsupported_content_encoding_raises():
+    from agent.tools import _decode_response_content
+    import httpx
+    import pytest
+
+    body = b"<html><title>Plain HTML</title></html>"
+
+    with pytest.raises(ValueError, match="Unsupported Content-Encoding=br"):
+        _decode_response_content(body, httpx.Headers({"content-encoding": "br"}))
+
+
+def test_identity_content_encoding_returns_body_unchanged():
     from agent.tools import _decode_response_content
     import httpx
 
     body = b"<html><title>Plain HTML</title></html>"
-    decoded = _decode_response_content(
-        body, httpx.Headers({"content-encoding": "gzip"})
+
+    assert (
+        _decode_response_content(body, httpx.Headers({"content-encoding": "identity"}))
+        == body
     )
 
-    assert decoded == body
+
+def test_pin_connection_rewrites_host_to_validated_ip():
+    from agent.tools import _pin_connection
+
+    connect_url, headers, extensions = _pin_connection(
+        "https://example.com/article?x=1", "93.184.216.34"
+    )
+
+    # TCP connects to the validated IP; Host header and SNI keep the hostname.
+    assert connect_url == "https://93.184.216.34/article?x=1"
+    assert headers == {"Host": "example.com"}
+    assert extensions == {"sni_hostname": "example.com"}
+
+
+def test_pin_connection_preserves_port_and_brackets_ipv6():
+    from agent.tools import _pin_connection
+
+    connect_url, headers, extensions = _pin_connection(
+        "https://example.com:8443/a", "2606:2800:220:1:248:1893:25c8:1946"
+    )
+
+    assert connect_url == "https://[2606:2800:220:1:248:1893:25c8:1946]:8443/a"
+    assert headers == {"Host": "example.com:8443"}
+    assert extensions == {"sni_hostname": "example.com"}
+
+
+def test_pin_connection_passes_ip_literal_through_unchanged():
+    from agent.tools import _pin_connection
+
+    connect_url, headers, extensions = _pin_connection("https://1.1.1.1/a", None)
+
+    assert connect_url == "https://1.1.1.1/a"
+    assert headers == {}
+    assert extensions == {}
 
 
 def test_retryable_exception_detection():
@@ -870,6 +929,7 @@ def test_retryable_exception_detection():
 
 
 def test_call_with_retries_succeeds_after_retry(monkeypatch):
+    from agent.tools import gemini_client
     from agent import tools
     import asyncio
 
@@ -879,7 +939,7 @@ def test_call_with_retries_succeeds_after_retry(monkeypatch):
     async def no_sleep(_delay):
         return None
 
-    monkeypatch.setattr(tools.asyncio, "sleep", no_sleep)
+    monkeypatch.setattr(gemini_client.asyncio, "sleep", no_sleep)
 
     attempts = {"count": 0}
 
