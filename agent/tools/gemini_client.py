@@ -132,3 +132,32 @@ async def _generate_image_data(prompt: str) -> tuple[bytes, str]:
                 data = base64.b64decode(data)
             return data, part.inline_data.mime_type or "image/png"
     return b"", "image/png"
+
+
+def is_mock_mode() -> bool:
+    return get_settings().mock_mode
+
+
+def text_model_name() -> str:
+    return get_settings().gemini_text_model
+
+
+def image_model_name() -> str:
+    return get_settings().gemini_image_model
+
+
+def has_gemini_credentials() -> bool:
+    return get_settings().has_gemini_credentials
+
+
+def article_fetch_max_bytes() -> int:
+    return get_settings().article_fetch_max_bytes
+
+
+def display_model_name(model_name: str) -> str:
+    labels = {
+        "gemini-2.5-flash-image": "gemini-2.5-flash-image (Nano Banana)",
+        "gemini-3-pro-image-preview": "gemini-3-pro-image-preview (Nano Banana Pro)",
+        "gemini-3-pro-image": "gemini-3-pro-image (Nano Banana Pro)",
+    }
+    return labels.get(model_name, model_name)
