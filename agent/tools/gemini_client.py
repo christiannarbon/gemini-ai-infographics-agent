@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import logging
+import re
 from typing import Optional
 
 from agent.config import get_settings
@@ -65,7 +66,7 @@ def _is_retryable_exception(exc: Exception) -> bool:
     if status_code in RETRYABLE_STATUS_CODES:
         return True
     message = str(exc)
-    return any(str(code) in message for code in RETRYABLE_STATUS_CODES)
+    return bool(re.search(r"\b(429|500|502|503|504)\b", message))
 
 
 def _exception_status_code(exc: Exception) -> Optional[int]:
