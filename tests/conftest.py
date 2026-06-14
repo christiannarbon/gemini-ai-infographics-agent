@@ -11,8 +11,23 @@ from agent.config import get_settings  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
-def clear_settings_cache():
-    """Autouse fixture to automatically clear Settings cache between tests."""
+def clear_settings_cache(monkeypatch):
+    """Autouse fixture to automatically clear Settings cache between tests and on env modifications."""
     get_settings.cache_clear()
+
+    orig_setenv = monkeypatch.setenv
+    orig_delenv = monkeypatch.delenv
+
+    def setenv_wrapper(*args, **kwargs):
+        orig_setenv(*args, **kwargs)
+        get_settings.cache_clear()
+
+    def delenv_wrapper(*args, **kwargs):
+        orig_delenv(*args, **kwargs)
+        get_settings.cache_clear()
+
+    monkeypatch.setenv = setenv_wrapper
+    monkeypatch.delenv = delenv_wrapper
+
     yield
     get_settings.cache_clear()
