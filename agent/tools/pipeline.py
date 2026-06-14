@@ -4,6 +4,7 @@ import logging
 import re
 from typing import Optional
 
+from agent.tools import gemini_client
 from agent.tools.gemini_client import (
     display_model_name,
     has_gemini_credentials,
@@ -77,9 +78,9 @@ Text:
 {article_text[:12000]}
 """
     try:
-        from agent import tools
-
-        summary = await tools._generate_structured_content(prompt, ArticleSummary)
+        summary = await gemini_client._generate_structured_content(
+            prompt, ArticleSummary
+        )
     except Exception as exc:
         logger.warning("Gemini summarize failed, falling back to heuristic: %s", exc)
         return _heuristic_summary(title, article_text, reason=str(exc))
@@ -134,9 +135,7 @@ Constraints:
 - ALWAYS respond in English regardless of the input language
 """
     try:
-        from agent import tools
-
-        return await tools._generate_structured_content(prompt, StyleDecision)
+        return await gemini_client._generate_structured_content(prompt, StyleDecision)
     except Exception as exc:
         logger.warning(
             "Gemini style decision failed, falling back to heuristic: %s", exc
@@ -218,9 +217,9 @@ Constraints:
 - ALWAYS respond in English regardless of the input language
 """
     try:
-        from agent import tools
-
-        visual_plan = await tools._generate_structured_content(prompt, VisualPlan)
+        visual_plan = await gemini_client._generate_structured_content(
+            prompt, VisualPlan
+        )
         return visual_plan.plan_items[:6]
     except Exception as exc:
         logger.warning(
@@ -321,9 +320,7 @@ Expression:
 - ALWAYS generate text in English regardless of the input language
 """
     try:
-        from agent import tools
-
-        image_bytes, mime_type = await tools._generate_image_data(prompt)
+        image_bytes, mime_type = await gemini_client._generate_image_data(prompt)
     except Exception as exc:
         logger.warning("Gemini image generation failed, falling back to SVG: %s", exc)
         return GeneratedImage(b"", "", f"fallback-svg:{str(exc)[:120]}")
