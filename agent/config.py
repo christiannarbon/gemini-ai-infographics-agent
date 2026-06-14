@@ -4,41 +4,6 @@ from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-_real_lru_cache = lru_cache
-
-
-# Redefine lru_cache to automatically clear cache on each call during testing,
-# allowing monkeypatched environment variables to take effect immediately.
-def lru_cache(func=None, *args, **kwargs):
-    if any(m.startswith("py" + "test") for m in __import__("sys").modules):
-        if func is not None:
-            cached_func = _real_lru_cache(func)
-
-            def wrapper(*a, **kw):
-                cached_func.cache_clear()
-                return cached_func(*a, **kw)
-
-            wrapper.cache_clear = cached_func.cache_clear
-            return wrapper
-        else:
-
-            def decorator(f):
-                cached_func = _real_lru_cache(f)
-
-                def wrapper(*a, **kw):
-                    cached_func.cache_clear()
-                    return cached_func(*a, **kw)
-
-                wrapper.cache_clear = cached_func.cache_clear
-                return wrapper
-
-            return decorator
-    else:
-        if func is not None:
-            return _real_lru_cache(func)
-        return _real_lru_cache(*args, **kwargs)
-
-
 def parse_truthy_bool(v: Any) -> bool:
     """Helper to parse boolean strings like '1', 'true', 'yes', 'on' case-insensitively."""
     if isinstance(v, bool):
