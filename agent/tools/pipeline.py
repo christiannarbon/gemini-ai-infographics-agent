@@ -1,3 +1,9 @@
+"""Orchestrates the infographic generation pipeline using mock, heuristic, or Gemini-powered workflows.
+
+Not responsible for: parsing network packets, rendering raw SVGs, or direct GCS uploads.
+Depends on: agent.tools.gemini_client, agent.tools.schemas, agent.tools.svg_renderer (and prompts).
+"""
+
 from __future__ import annotations
 
 import logging
