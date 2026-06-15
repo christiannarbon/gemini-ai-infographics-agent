@@ -1,3 +1,9 @@
+"""Handles Gemini API client creation, configuration, token limits, and retryable service execution.
+
+Not responsible for: fetching articles, rendering SVGs, storing artifacts, or compiling prompts.
+Depends on: agent.config (and stdlib/google-genai).
+"""
+
 from __future__ import annotations
 
 import asyncio
