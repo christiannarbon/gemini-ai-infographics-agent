@@ -1,3 +1,9 @@
+"""Exposes the public and internal API symbols of the agent.tools package.
+
+Not responsible for: executing business logic directly.
+Depends on: agent.tools.fetcher, agent.tools.gemini_client, agent.tools.pipeline, agent.tools.schemas, agent.tools.storage, agent.tools.svg_renderer.
+"""
+
 from __future__ import annotations
 
 import asyncio  # noqa: F401
