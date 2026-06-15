@@ -1,3 +1,9 @@
+"""Fetches and cleans article text from a public URL.
+
+Not responsible for: summarizing, style decision, prompting, or storage.
+Depends on: agent.tools.gemini_client (and stdlib/httpx/trafilatura).
+"""
+
 from __future__ import annotations
 
 import asyncio
