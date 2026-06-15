@@ -1,3 +1,9 @@
+"""Persists generated artifacts locally and mirrors them to Google Cloud Storage.
+
+Not responsible for: fetch operations, prompting, rendering, or workflow orchestrations.
+Depends on: agent.config (and stdlib/google-cloud-storage).
+"""
+
 from __future__ import annotations
 
 import asyncio
