@@ -1,3 +1,9 @@
+"""Constructs the exact multi-line f-string prompt templates sent to the Gemini API.
+
+Not responsible for: executing network requests, caching, retries, or parsing schema models.
+Depends on: standard library and typing.
+"""
+
 from __future__ import annotations
 
 from typing import Optional
