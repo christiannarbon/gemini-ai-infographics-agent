@@ -1,3 +1,9 @@
+"""Defines structural Pydantic models and dataclasses for structured API outputs and image payloads.
+
+Not responsible for: performing API calls, parsing raw HTML, or rendering graphics.
+Depends on: standard library and pydantic.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
