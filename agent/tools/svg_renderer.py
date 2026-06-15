@@ -1,3 +1,9 @@
+"""Generates SVG markup for fallback infographics and wraps base64 images inside SVG tags.
+
+Not responsible for: fetching articles, generating prompts, or storage management.
+Depends on: standard library.
+"""
+
 from __future__ import annotations
 
 import base64
