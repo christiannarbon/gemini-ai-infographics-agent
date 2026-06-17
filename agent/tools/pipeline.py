@@ -24,6 +24,7 @@ from agent.tools.schemas import (
     StyleDecision,
     VisualPlan,
 )
+from agent.tools import prompts
 from agent.tools.svg_renderer import _render_image_svg, _style_image_directive
 
 logger = logging.getLogger(__name__)
@@ -62,27 +63,7 @@ async def summarize_article(title: str, article_text: str) -> dict[str, list[str
             "backend": "mock",
         }
 
-    prompt = f"""Summarize the following article in English, and create an article understanding memo to be used for an infographic.
-
-Constraints:
-- summary_lines MUST be exactly 3 lines
-- summary_lines summarizes the main point and story of the article in 3 lines of natural explanatory text
-- key_points must be 4 to 6 items
-- key_points should not be a simple paraphrase of summary_lines, but supplementary notes that show how to read the article
-- key_points should express background, flow, author's assertions, impressive techniques, concrete examples, and post-reading implications in natural text
-- key_points should be about 60 to 120 characters per item, avoiding becoming just classification labels or measure names by being too short
-- Do not mechanically attach classification labels like "Technology:", "Solution:", "Metric:" to key_points. Use them naturally only when necessary
-- Include proper nouns and numbers only when they are effective for understanding the article or its atmosphere
-- Use only the content written in the article, expressing it in a way that retains both the general point and concrete examples
-- Output must strictly follow the specified schema
-- ALWAYS respond in English regardless of the input language
-
-Title:
-{title}
-
-Text:
-{article_text[:12000]}
-"""
+    prompt = prompts.build_summary_prompt(title, article_text)
     try:
         summary = await gemini_client._generate_structured_content(
             prompt, ArticleSummary
@@ -118,28 +99,7 @@ async def decide_style(
             summary_lines, key_points, feedback, reason_prefix="mock"
         )
 
-    prompt = f"""Choose one infographic style that best fits the following summary and key points.
-
-Options:
-- business: for enterprises, calm colors, structured diagrams
-- pop: for general readers, bright colors, friendly icons
-- minimal: limited information, lots of whitespace, quiet presentation style
-
-3-line Summary:
-{chr(10).join(summary_lines)}
-
-Key Points:
-{chr(10).join(key_points)}
-
-User Feedback:
-{feedback or "None"}
-
-Constraints:
-- style must be one of business / pop / minimal
-- reason must be one English sentence
-- Output must strictly follow the specified schema
-- ALWAYS respond in English regardless of the input language
-"""
+    prompt = prompts.build_style_prompt(summary_lines, key_points, feedback)
     try:
         return await gemini_client._generate_structured_content(prompt, StyleDecision)
     except Exception as exc:
@@ -195,33 +155,9 @@ async def create_visual_plan_for_style(
             plan.append(f"Feedback reflection: {feedback.strip()[:80]}")
         return plan
 
-    prompt = f"""Create an infographic composition plan in English.
-
-3-line Summary:
-{chr(10).join(summary_lines)}
-
-Key Points:
-{chr(10).join(key_points)}
-
-User Feedback:
-{feedback or "None"}
-
-Selected Style:
-{style}
-
-Constraints:
-- plan_items must be 4 to 6 items
-- Instructions should clarify placement on the screen, concepts to emphasize, and eye movement guidance
-- Use color tones, density, and icon expressions that fit the selected style
-- Use the 3-line summary as the overall story of the article, for top headings, central flows, or short explanatory bands
-- Read key points as article understanding memos, and summarize them as short labels, sticky notes, speech bubbles, or annotations next to icons in the image
-- Do not treat key points as a categorized list of measures, but make a composition that conveys the article's atmosphere, assertions, flow, and concrete examples
-- Do not place the 3-line summary and key points side by side as text boxes of the same granularity
-- Limit the text displayed in the image to only the contents of the 3-line summary and key points
-- Do not include processing steps of the app, generation infrastructure, or explanatory context that is not part of the article content
-- Output must strictly follow the specified schema
-- ALWAYS respond in English regardless of the input language
-"""
+    prompt = prompts.build_visual_plan_prompt(
+        summary_lines, key_points, feedback, style
+    )
     try:
         visual_plan = await gemini_client._generate_structured_content(
             prompt, VisualPlan
@@ -286,45 +222,13 @@ async def generate_image_artifact(
         logger.warning("Gemini image generation skipped: %s", message)
         return GeneratedImage(b"", "", f"fallback-svg:{message}")
 
-    allowed_summary = summary_lines or []
-    allowed_points = key_points or []
-    prompt = f"""Generate an English infographic image.
-
-Purpose:
-- Express as a single easy-to-read infographic by using the article's 3-line summary as the overall story and the key points as diagram materials
-- Diagram the article content itself, not an explanation of the application or generation system
-
-Text allowed to be displayed in the image:
-3-line Summary (materials for the overall story):
-{chr(10).join(f"- {line}" for line in allowed_summary) or "- 3-line Summary"}
-
-Key Points (article understanding memos. Summarize into short display text if necessary):
-{chr(10).join(f"- {point}" for point in allowed_points) or "- Key Points"}
-
-Composition Plan (for placement reference only. Do not write the composition plan text in the image):
-{chr(10).join(f"- {item}" for item in visual_plan)}
-
-Selected Style:
-{style}
-
-Style Directives:
-{_style_image_directive(style)}
-
-Expression:
-- 16:9 landscape aspect ratio
-- White background, easy-to-read thick lines, icons, arrows, sticky note-style memos
-- English text should be short, large, and easy to read
-- Treat the 3-line summary as a short story band at the top, or as a large central flow
-- Use key points as article understanding memos, rephrasing them shortly as sticky notes, speech bubbles, keyword chips, or labels next to icons in the image
-- Do not write out all key points as long sentences as they are, but compress them into short expressions conveying the main point, impressive examples, flow, and implications
-- According to the selected style, 'business' should have clear structure, 'pop' should be friendly, and 'minimal' should express with whitespace and few elements
-- Do not make a composition that just lines up the 3-line summary and key points in text boxes of the same size
-- Do not lean too much towards a boxed layout like tables, long text cards, or presentation slides; make a composition where flow, relationships, contrast, and hierarchy are visible
-- Do not add words to the image that are not in the article text, such as app processing steps, generation infrastructure, explanatory contexts, or composition plan labels
-- Keep headings only to those that indicate article content, such as "3-line Summary" or "Key Points"
-- Do not mix colors or decorations that contradict the selected style
-- ALWAYS generate text in English regardless of the input language
-"""
+    prompt = prompts.build_image_prompt(
+        style,
+        summary_lines,
+        key_points,
+        visual_plan,
+        _style_image_directive(style),
+    )
     try:
         image_bytes, mime_type = await gemini_client._generate_image_data(prompt)
     except Exception as exc:
