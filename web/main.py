@@ -10,9 +10,8 @@ from pathlib import Path
 from typing import Literal, Optional
 from uuid import uuid4
 
-from fastapi import FastAPI, Form, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import (
-    FileResponse,
     HTMLResponse,
     PlainTextResponse,
     RedirectResponse,
@@ -25,12 +24,7 @@ from agent.config import get_settings
 from agent.models import GraphicResult, ProgressStep, SummaryResult
 from agent.tools import close_genai_client
 from web.auth import (
-    AUTH_COOKIE_NAME,
     assert_auth_config,
-    auth_enabled,
-    cookie_max_age,
-    create_auth_cookie,
-    password_matches,
     request_is_authenticated,
 )
 from web.agent_client import build_agent_client
@@ -151,194 +145,6 @@ async def require_password_auth(request: Request, call_next) -> Response:
         "Authentication required",
         status_code=401,
         headers={"HX-Redirect": "/login"},
-    )
-
-
-@app.get("/healthz", response_class=PlainTextResponse)
-async def healthz() -> str:
-    return "ok"
-
-
-@app.get("/login", response_class=HTMLResponse)
-async def login_form(request: Request, next: str = "/") -> HTMLResponse:
-    return templates.TemplateResponse(
-        request,
-        "login.html",
-        {"next_path": _safe_next_path(next), "error": ""},
-    )
-
-
-@app.post("/login")
-async def login(
-    request: Request,
-    password: str = Form(...),
-    next_path: str = Form("/"),
-) -> Response:
-    next_url = _safe_next_path(next_path)
-    if not auth_enabled():
-        return RedirectResponse(url=next_url, status_code=303)
-    if not password_matches(password):
-        return templates.TemplateResponse(
-            request,
-            "login.html",
-            {
-                "next_path": next_url,
-                "error": "Incorrect password.",
-            },
-            status_code=401,
-        )
-
-    response = RedirectResponse(url=next_url, status_code=303)
-    response.set_cookie(
-        AUTH_COOKIE_NAME,
-        create_auth_cookie(),
-        max_age=cookie_max_age(),
-        httponly=True,
-        secure=request.url.scheme == "https",
-        samesite="lax",
-    )
-    return response
-
-
-@app.post("/logout")
-async def logout() -> Response:
-    response = RedirectResponse(url="/login", status_code=303)
-    response.delete_cookie(AUTH_COOKIE_NAME)
-    return response
-
-
-@app.get("/", response_class=HTMLResponse)
-async def index(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(
-        request,
-        "index.html",
-        {"auth_enabled": auth_enabled()},
-    )
-
-
-@app.post("/summaries", response_class=HTMLResponse)
-async def summarize(request: Request, url: str = Form(...)) -> HTMLResponse:
-    job = _create_job("summary", "Summarizing article...")
-    _schedule_background_task(_run_summary_job(job.job_id, url))
-    return templates.TemplateResponse(
-        request,
-        "partials/job.html",
-        {"job": job},
-    )
-
-
-@app.post("/infographics", response_class=HTMLResponse)
-async def create_infographics(
-    request: Request,
-    session_id: str = Form(...),
-    summary_text: str = Form(""),
-    key_points_text: str = Form(""),
-) -> HTMLResponse:
-    summary = _get_summary(session_id)
-    _apply_summary_edits(summary, summary_text, key_points_text)
-    job = _create_job("infographics", "Generating infographics...")
-    _schedule_background_task(_run_infographics_job(job.job_id, summary, feedback=""))
-    return templates.TemplateResponse(
-        request,
-        "partials/job.html",
-        {"job": job},
-    )
-
-
-@app.post("/infographics/regenerate", response_class=HTMLResponse)
-async def regenerate_infographics(
-    request: Request,
-    session_id: str = Form(...),
-    feedback: str = Form(""),
-) -> HTMLResponse:
-    summary = _get_summary(session_id)
-    job = _create_job("infographics", "Applying feedback...", feedback=feedback)
-    _schedule_background_task(
-        _run_infographics_job(job.job_id, summary, feedback=feedback)
-    )
-    return templates.TemplateResponse(
-        request,
-        "partials/job.html",
-        {"job": job},
-    )
-
-
-@app.get("/infographics/{session_id}/download")
-async def download_infographics(session_id: str) -> FileResponse:
-    infographics = infographics_cache.get(session_id)
-    if not infographics:
-        raise HTTPException(status_code=404, detail="Infographics not found")
-
-    artifact_path = Path(infographics.artifact_path)
-    if not artifact_path.is_file():
-        raise HTTPException(status_code=404, detail="Artifact not found")
-
-    return FileResponse(
-        artifact_path,
-        media_type=infographics.artifact_mime_type,
-        filename=_download_filename(infographics),
-    )
-
-
-@app.get("/jobs/{job_id}", response_class=HTMLResponse)
-async def poll_job(request: Request, job_id: str) -> HTMLResponse:
-    job = jobs.get(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
-
-    if job.status == "done" and job.kind == "summary" and job.summary:
-        return _retarget_job_response(
-            templates.TemplateResponse(
-                request,
-                "partials/summary.html",
-                {"summary": job.summary},
-            ),
-            job.job_id,
-            request,
-        )
-
-    if (
-        job.status == "done"
-        and job.kind == "infographics"
-        and job.summary
-        and job.infographics
-    ):
-        return _retarget_job_response(
-            templates.TemplateResponse(
-                request,
-                "partials/infographics.html",
-                {
-                    "summary": job.summary,
-                    "infographics": job.infographics,
-                    "feedback": job.feedback,
-                },
-            ),
-            job.job_id,
-            request,
-        )
-
-    if job.status == "failed":
-        return _retarget_job_response(
-            templates.TemplateResponse(
-                request,
-                "partials/job.html",
-                {"job": job},
-            ),
-            job.job_id,
-            request,
-        )
-
-    if request.headers.get("HX-Target") == f"{job.job_id}-content":
-        return templates.TemplateResponse(
-            request,
-            "partials/job_content.html",
-            {"job": job},
-        )
-
-    return templates.TemplateResponse(
-        request,
-        "partials/job.html",
-        {"job": job},
     )
 
 
@@ -533,3 +339,13 @@ def _log_job_duration(kind: JobKind, job_id: str, started: float) -> None:
         job_id,
         time.perf_counter() - started,
     )
+
+
+# Register routers at the bottom to resolve circular dependency imports
+from web.routers import auth, pages, summaries, infographics, jobs as jobs_router  # noqa: E402
+
+app.include_router(auth.router)
+app.include_router(pages.router)
+app.include_router(summaries.router)
+app.include_router(infographics.router)
+app.include_router(jobs_router.router)
