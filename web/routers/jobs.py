@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
-from web.main import jobs, templates, _retarget_job_response
+from web.runtime import jobs, templates, _retarget_job_response
 
 router = APIRouter()
 
