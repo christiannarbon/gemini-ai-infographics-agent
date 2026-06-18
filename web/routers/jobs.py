@@ -3,20 +3,20 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
-from web.runtime import jobs, templates, _retarget_job_response
+from web.runtime import _retarget_job_response
 
 router = APIRouter()
 
 
 @router.get("/jobs/{job_id}", response_class=HTMLResponse)
 async def poll_job(request: Request, job_id: str) -> HTMLResponse:
-    job = jobs.get(job_id)
+    job = request.app.state.jobs.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
     if job.status == "done" and job.kind == "summary" and job.summary:
         return _retarget_job_response(
-            templates.TemplateResponse(
+            request.app.state.templates.TemplateResponse(
                 request,
                 "partials/summary.html",
                 {"summary": job.summary},
@@ -32,7 +32,7 @@ async def poll_job(request: Request, job_id: str) -> HTMLResponse:
         and job.infographics
     ):
         return _retarget_job_response(
-            templates.TemplateResponse(
+            request.app.state.templates.TemplateResponse(
                 request,
                 "partials/infographics.html",
                 {
@@ -47,7 +47,7 @@ async def poll_job(request: Request, job_id: str) -> HTMLResponse:
 
     if job.status == "failed":
         return _retarget_job_response(
-            templates.TemplateResponse(
+            request.app.state.templates.TemplateResponse(
                 request,
                 "partials/job.html",
                 {"job": job},
@@ -57,13 +57,13 @@ async def poll_job(request: Request, job_id: str) -> HTMLResponse:
         )
 
     if request.headers.get("HX-Target") == f"{job.job_id}-content":
-        return templates.TemplateResponse(
+        return request.app.state.templates.TemplateResponse(
             request,
             "partials/job_content.html",
             {"job": job},
         )
 
-    return templates.TemplateResponse(
+    return request.app.state.templates.TemplateResponse(
         request,
         "partials/job.html",
         {"job": job},
