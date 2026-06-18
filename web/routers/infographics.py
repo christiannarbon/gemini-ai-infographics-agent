@@ -12,8 +12,6 @@ from web.runtime import (
     _get_summary,
     _run_infographics_job,
     _schedule_background_task,
-    infographics_cache,
-    templates,
 )
 
 router = APIRouter()
@@ -26,11 +24,14 @@ async def create_infographics(
     summary_text: str = Form(""),
     key_points_text: str = Form(""),
 ) -> HTMLResponse:
-    summary = _get_summary(session_id)
+    summary = _get_summary(request.app, session_id)
     _apply_summary_edits(summary, summary_text, key_points_text)
-    job = _create_job("infographics", "Generating infographics...")
-    _schedule_background_task(_run_infographics_job(job.job_id, summary, feedback=""))
-    return templates.TemplateResponse(
+    job = _create_job(request.app, "infographics", "Generating infographics...")
+    _schedule_background_task(
+        request.app,
+        _run_infographics_job(request.app, job.job_id, summary, feedback=""),
+    )
+    return request.app.state.templates.TemplateResponse(
         request,
         "partials/job.html",
         {"job": job},
@@ -43,12 +44,15 @@ async def regenerate_infographics(
     session_id: str = Form(...),
     feedback: str = Form(""),
 ) -> HTMLResponse:
-    summary = _get_summary(session_id)
-    job = _create_job("infographics", "Applying feedback...", feedback=feedback)
-    _schedule_background_task(
-        _run_infographics_job(job.job_id, summary, feedback=feedback)
+    summary = _get_summary(request.app, session_id)
+    job = _create_job(
+        request.app, "infographics", "Applying feedback...", feedback=feedback
     )
-    return templates.TemplateResponse(
+    _schedule_background_task(
+        request.app,
+        _run_infographics_job(request.app, job.job_id, summary, feedback=feedback),
+    )
+    return request.app.state.templates.TemplateResponse(
         request,
         "partials/job.html",
         {"job": job},
@@ -56,8 +60,8 @@ async def regenerate_infographics(
 
 
 @router.get("/infographics/{session_id}/download")
-async def download_infographics(session_id: str) -> FileResponse:
-    infographics = infographics_cache.get(session_id)
+async def download_infographics(request: Request, session_id: str) -> FileResponse:
+    infographics = request.app.state.infographics_cache.get(session_id)
     if not infographics:
         raise HTTPException(status_code=404, detail="Infographics not found")
 
