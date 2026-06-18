@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse
 
-from web.main import (
+from web.runtime import (
     _create_job,
     _run_summary_job,
     _schedule_background_task,
