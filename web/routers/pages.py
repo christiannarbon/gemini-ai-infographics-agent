@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse
 
 from web.auth import auth_enabled
-from web.main import templates
+from web.runtime import templates
 
 router = APIRouter()
 
