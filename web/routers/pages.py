@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse
 
 from web.auth import auth_enabled
-from web.runtime import templates
+
 
 router = APIRouter()
 
@@ -16,7 +16,7 @@ async def healthz() -> str:
 
 @router.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(
+    return request.app.state.templates.TemplateResponse(
         request,
         "index.html",
         {"auth_enabled": auth_enabled()},
