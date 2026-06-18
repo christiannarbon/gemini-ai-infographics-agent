@@ -10,14 +10,14 @@ from web.auth import (
     create_auth_cookie,
     password_matches,
 )
-from web.runtime import templates, _safe_next_path
+from web.runtime import _safe_next_path
 
 router = APIRouter()
 
 
 @router.get("/login", response_class=HTMLResponse)
 async def login_form(request: Request, next: str = "/") -> HTMLResponse:
-    return templates.TemplateResponse(
+    return request.app.state.templates.TemplateResponse(
         request,
         "login.html",
         {"next_path": _safe_next_path(next), "error": ""},
@@ -34,7 +34,7 @@ async def login(
     if not auth_enabled():
         return RedirectResponse(url=next_url, status_code=303)
     if not password_matches(password):
-        return templates.TemplateResponse(
+        return request.app.state.templates.TemplateResponse(
             request,
             "login.html",
             {
