@@ -10,7 +10,7 @@ from web.auth import (
     create_auth_cookie,
     password_matches,
 )
-from web.main import templates, _safe_next_path
+from web.runtime import templates, _safe_next_path
 
 router = APIRouter()
 
