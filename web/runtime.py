@@ -9,12 +9,10 @@ from pathlib import Path
 from typing import Literal, Optional
 from uuid import uuid4
 
-from fastapi import HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 
 from agent.models import GraphicResult, ProgressStep, SummaryResult
-from web.agent_client import build_agent_client
 
 BASE_DIR = Path(__file__).resolve().parent
 logger = logging.getLogger(__name__)
@@ -91,26 +89,19 @@ class AgentJob:
         return _estimated_progress_steps(self.elapsed_seconds, milestones)
 
 
-templates = Jinja2Templates(directory=BASE_DIR / "templates")
-agent_client = None
-
-sessions: dict[str, SummaryResult] = {}
-infographics_cache: dict[str, GraphicResult] = {}
-jobs: dict[str, AgentJob] = {}
-background_tasks: set[asyncio.Task] = set()
-
-
-def _get_summary(session_id: str) -> SummaryResult:
-    summary = sessions.get(session_id)
+def _get_summary(app: FastAPI, session_id: str) -> SummaryResult:
+    summary = app.state.sessions.get(session_id)
     if not summary:
         raise HTTPException(status_code=404, detail="Session not found")
     return summary
 
 
-def _create_job(kind: JobKind, title: str, feedback: str = "") -> AgentJob:
+def _create_job(
+    app: FastAPI, kind: JobKind, title: str, feedback: str = ""
+) -> AgentJob:
     job_id = f"{kind}-{uuid4().hex}"
     job = AgentJob(job_id=job_id, kind=kind, title=title, feedback=feedback)
-    jobs[job_id] = job
+    app.state.jobs[job_id] = job
     return job
 
 
@@ -128,28 +119,30 @@ def _download_filename(infographics: GraphicResult) -> str:
     return f"infographics-{infographics.session_id[:8]}{suffix}"
 
 
-def _schedule_background_task(coro) -> None:
+def _schedule_background_task(app: FastAPI, coro) -> None:
     task = asyncio.create_task(coro)
-    background_tasks.add(task)
-    task.add_done_callback(background_tasks.discard)
+    app.state.background_tasks.add(task)
+    task.add_done_callback(app.state.background_tasks.discard)
 
 
-async def _run_summary_job(job_id: str, url: str) -> None:
-    job = jobs[job_id]
+async def _run_summary_job(app: FastAPI, job_id: str, url: str) -> None:
+    job = app.state.jobs[job_id]
     started = time.perf_counter()
 
     async def update_progress(progress: list) -> None:
         job.progress = progress
 
     try:
-        summary = await _agent_client().summarize_url(url, on_progress=update_progress)
+        summary = await _get_agent_client(app).summarize_url(
+            url, on_progress=update_progress
+        )
     except Exception as exc:
         logger.exception("Summary job failed: job_id=%s url=%s", job_id, url)
         job.status = "failed"
         job.error = _display_error(exc)
         return
 
-    sessions[summary.session_id] = summary
+    app.state.sessions[summary.session_id] = summary
     job.summary = summary
     job.progress = summary.progress
     job.status = "done"
@@ -157,9 +150,9 @@ async def _run_summary_job(job_id: str, url: str) -> None:
 
 
 async def _run_infographics_job(
-    job_id: str, summary: SummaryResult, feedback: str
+    app: FastAPI, job_id: str, summary: SummaryResult, feedback: str
 ) -> None:
-    job = jobs[job_id]
+    job = app.state.jobs[job_id]
     job.summary = summary
     started = time.perf_counter()
 
@@ -168,13 +161,13 @@ async def _run_infographics_job(
 
     try:
         if feedback:
-            infographics = await _agent_client().regenerate_infographics(
+            infographics = await _get_agent_client(app).regenerate_infographics(
                 summary,
                 feedback,
                 on_progress=update_progress,
             )
         else:
-            infographics = await _agent_client().generate_infographics(
+            infographics = await _get_agent_client(app).generate_infographics(
                 summary,
                 on_progress=update_progress,
             )
@@ -188,7 +181,7 @@ async def _run_infographics_job(
         job.error = _display_error(exc)
         return
 
-    infographics_cache[summary.session_id] = infographics
+    app.state.infographics_cache[summary.session_id] = infographics
     job.infographics = infographics
     job.progress = infographics.progress
     job.status = "done"
@@ -277,13 +270,6 @@ def _safe_next_path(path: str) -> str:
     return path
 
 
-def _agent_client():
-    global agent_client
-    if agent_client is None:
-        agent_client = build_agent_client()
-    return agent_client
-
-
 def _log_job_duration(kind: JobKind, job_id: str, started: float) -> None:
     logger.info(
         "job_duration kind=%s job_id=%s elapsed_seconds=%.3f",
@@ -291,3 +277,11 @@ def _log_job_duration(kind: JobKind, job_id: str, started: float) -> None:
         job_id,
         time.perf_counter() - started,
     )
+
+
+def _get_agent_client(app: FastAPI):
+    if not hasattr(app.state, "agent_client") or app.state.agent_client is None:
+        from web.agent_client import build_agent_client
+
+        app.state.agent_client = build_agent_client()
+    return app.state.agent_client
