@@ -13,6 +13,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
 from agent.models import GraphicResult, ProgressStep, SummaryResult
+from web.agent_client import AgentClient
 
 BASE_DIR = Path(__file__).resolve().parent
 logger = logging.getLogger(__name__)
@@ -125,7 +126,9 @@ def _schedule_background_task(app: FastAPI, coro) -> None:
     task.add_done_callback(app.state.background_tasks.discard)
 
 
-async def _run_summary_job(app: FastAPI, job_id: str, url: str) -> None:
+async def _run_summary_job(
+    app: FastAPI, job_id: str, url: str, agent_client: AgentClient
+) -> None:
     job = app.state.jobs[job_id]
     started = time.perf_counter()
 
@@ -133,9 +136,7 @@ async def _run_summary_job(app: FastAPI, job_id: str, url: str) -> None:
         job.progress = progress
 
     try:
-        summary = await _get_agent_client(app).summarize_url(
-            url, on_progress=update_progress
-        )
+        summary = await agent_client.summarize_url(url, on_progress=update_progress)
     except Exception as exc:
         logger.exception("Summary job failed: job_id=%s url=%s", job_id, url)
         job.status = "failed"
@@ -150,7 +151,11 @@ async def _run_summary_job(app: FastAPI, job_id: str, url: str) -> None:
 
 
 async def _run_infographics_job(
-    app: FastAPI, job_id: str, summary: SummaryResult, feedback: str
+    app: FastAPI,
+    job_id: str,
+    summary: SummaryResult,
+    feedback: str,
+    agent_client: AgentClient,
 ) -> None:
     job = app.state.jobs[job_id]
     job.summary = summary
@@ -161,13 +166,13 @@ async def _run_infographics_job(
 
     try:
         if feedback:
-            infographics = await _get_agent_client(app).regenerate_infographics(
+            infographics = await agent_client.regenerate_infographics(
                 summary,
                 feedback,
                 on_progress=update_progress,
             )
         else:
-            infographics = await _get_agent_client(app).generate_infographics(
+            infographics = await agent_client.generate_infographics(
                 summary,
                 on_progress=update_progress,
             )
@@ -277,11 +282,3 @@ def _log_job_duration(kind: JobKind, job_id: str, started: float) -> None:
         job_id,
         time.perf_counter() - started,
     )
-
-
-def _get_agent_client(app: FastAPI):
-    if not hasattr(app.state, "agent_client") or app.state.agent_client is None:
-        from web.agent_client import build_agent_client
-
-        app.state.agent_client = build_agent_client()
-    return app.state.agent_client
