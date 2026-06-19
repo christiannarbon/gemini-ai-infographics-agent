@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Form, Request, Response
+from fastapi import APIRouter, Depends, Form, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from web.auth import (
@@ -11,13 +11,19 @@ from web.auth import (
     password_matches,
 )
 from web.runtime import _safe_next_path
+from web.dependencies import get_templates
+from fastapi.templating import Jinja2Templates
 
 router = APIRouter()
 
 
 @router.get("/login", response_class=HTMLResponse)
-async def login_form(request: Request, next: str = "/") -> HTMLResponse:
-    return request.app.state.templates.TemplateResponse(
+async def login_form(
+    request: Request,
+    next: str = "/",
+    templates: Jinja2Templates = Depends(get_templates),
+) -> HTMLResponse:
+    return templates.TemplateResponse(
         request,
         "login.html",
         {"next_path": _safe_next_path(next), "error": ""},
@@ -29,12 +35,13 @@ async def login(
     request: Request,
     password: str = Form(...),
     next_path: str = Form("/"),
+    templates: Jinja2Templates = Depends(get_templates),
 ) -> Response:
     next_url = _safe_next_path(next_path)
     if not auth_enabled():
         return RedirectResponse(url=next_url, status_code=303)
     if not password_matches(password):
-        return request.app.state.templates.TemplateResponse(
+        return templates.TemplateResponse(
             request,
             "login.html",
             {
