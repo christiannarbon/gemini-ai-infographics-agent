@@ -1,11 +1,13 @@
-from __future__ import annotations
-
+from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from web.dependencies import get_templates, get_job_store
+from web.dependencies import get_templates, get_jobs
 
 from web.runtime import _retarget_job_response
+
+if TYPE_CHECKING:
+    from web.runtime import AgentJob
 
 router = APIRouter()
 
@@ -14,7 +16,7 @@ router = APIRouter()
 async def poll_job(
     request: Request,
     job_id: str,
-    jobs: dict = Depends(get_job_store),
+    jobs: dict[str, AgentJob] = Depends(get_jobs),
     templates: Jinja2Templates = Depends(get_templates),
 ) -> HTMLResponse:
     job = jobs.get(job_id)
