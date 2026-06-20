@@ -20,6 +20,8 @@ logger = logging.getLogger(__name__)
 JobKind = Literal["summary", "infographics"]
 JobStatus = Literal["running", "done", "failed"]
 
+# TODO(INFO-REV-UPD-1-0-T5): helpers use app.state directly; full DI deferred
+
 
 @dataclass
 class AgentJob:
