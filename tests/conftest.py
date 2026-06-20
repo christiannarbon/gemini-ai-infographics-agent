@@ -29,5 +29,30 @@ def clear_settings_cache(monkeypatch):
     monkeypatch.setenv = setenv_wrapper
     monkeypatch.delenv = delenv_wrapper
 
+    # 1. Isolate environment
+    env_vars_to_del = [
+        "APP_PASSWORD",
+        "APP_SECRET_KEY",
+        "GCS_BUCKET",
+        "GOOGLE_CLOUD_PROJECT",
+        "GOOGLE_CLOUD_LOCATION",
+        "GEMINI_API_KEY",
+        "GOOGLE_API_KEY",
+        "GOOGLE_GENAI_USE_VERTEXAI",
+    ]
+    for var in env_vars_to_del:
+        monkeypatch.delenv(var, raising=False)
+
+    import os
+
+    for var in list(os.environ.keys()):
+        if var.startswith("AGENT_RUNTIME_"):
+            monkeypatch.delenv(var, raising=False)
+
+    # 2. Set safe defaults
+    monkeypatch.setenv("MOCK_MODE", "true")
+    monkeypatch.setenv("AGENT_BACKEND", "local")
+    monkeypatch.setenv("MOCK_STEP_DELAY", "0")
+
     yield
     get_settings.cache_clear()
