@@ -22,7 +22,7 @@ from web.agent_client import build_agent_client
 from web.logging_config import configure_logging
 
 # Import routers
-from web.routers import auth, pages, summaries, infographics, jobs as jobs_router
+from web.routers import auth, pages, summaries, infographics, jobs
 from web.runtime import _is_auth_exempt_path
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -42,10 +42,8 @@ def create_app() -> FastAPI:
     app = FastAPI(title="Infographics Agent Demo", lifespan=lifespan)
 
     # Initialize app state singletons/stores
-    app.state.job_store = {}
-    app.state.jobs = app.state.job_store
-    app.state.session_store = {}
-    app.state.sessions = app.state.session_store
+    app.state.jobs = {}
+    app.state.sessions = {}
     app.state.infographics_cache = {}
     app.state.background_tasks = set()
     app.state.templates = Jinja2Templates(directory=BASE_DIR / "templates")
@@ -79,6 +77,6 @@ def create_app() -> FastAPI:
     app.include_router(pages.router)
     app.include_router(summaries.router)
     app.include_router(infographics.router)
-    app.include_router(jobs_router.router)
+    app.include_router(jobs.router)
 
     return app
