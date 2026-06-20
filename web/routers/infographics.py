@@ -2,11 +2,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from typing import TYPE_CHECKING
+
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from web.agent_client import AgentClient
 from web.dependencies import get_templates, get_agent_client, get_infographics_cache
+
+if TYPE_CHECKING:
+    from agent.models import GraphicResult
+
 
 from web.runtime import (
     _apply_summary_edits,
@@ -78,7 +84,7 @@ async def regenerate_infographics(
 async def download_infographics(
     request: Request,
     session_id: str,
-    infographics_cache: dict = Depends(get_infographics_cache),
+    infographics_cache: dict[str, GraphicResult] = Depends(get_infographics_cache),
 ) -> FileResponse:
     infographics = infographics_cache.get(session_id)
     if not infographics:
