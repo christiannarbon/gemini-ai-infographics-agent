@@ -1,12 +1,8 @@
-import os
 import sys
 from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-os.environ["MOCK_MODE"] = "true"
-os.environ["AGENT_BACKEND"] = "local"
-os.environ["MOCK_STEP_DELAY"] = "0"
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from web.main import app  # noqa: E402
@@ -330,7 +326,9 @@ def test_job_polling_and_swap_animation_are_calm():
 
 
 def test_job_polling_updates_inner_content_until_terminal_swap():
-    from web.main import AgentJob, jobs
+    from web.runtime import AgentJob
+
+    jobs = app.state.jobs
 
     client = TestClient(app)
     job = AgentJob(job_id="summary-test-poll", kind="summary", title="Summarizing")
@@ -360,7 +358,8 @@ def test_job_polling_updates_inner_content_until_terminal_swap():
 
 def test_graphic_download_uses_attachment_response(tmp_path):
     from agent.models import GraphicResult
-    from web.main import infographics_cache
+
+    infographics_cache = app.state.infographics_cache
 
     artifact = tmp_path / "session-download.png"
     artifact.write_bytes(b"png-data")
@@ -540,7 +539,7 @@ def test_agent_runtime_requirements_file_omits_comments_and_blank_lines(
 
 
 def test_user_facing_error_message_mapping():
-    from web.main import _display_error
+    from web.runtime import _display_error
 
     model_error = _display_error(
         RuntimeError(
@@ -558,7 +557,7 @@ def test_user_facing_error_message_mapping():
 
 def test_slow_job_message_after_threshold():
     from datetime import timedelta
-    from web.main import AgentJob
+    from web.runtime import AgentJob
 
     job = AgentJob(job_id="graphic-test", kind="graphic", title="Generating")
     job.started_at = job.started_at - timedelta(seconds=241)
