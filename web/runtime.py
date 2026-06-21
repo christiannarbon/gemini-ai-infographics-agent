@@ -3,93 +3,19 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Literal, Optional
-from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
-from agent.models import GraphicResult, ProgressStep, SummaryResult
+from agent.models import GraphicResult, SummaryResult
 from web.agent_client import AgentClient
+from web.services.jobs import AgentJob, JobKind
 
 BASE_DIR = Path(__file__).resolve().parent
 logger = logging.getLogger(__name__)
-JobKind = Literal["summary", "infographics"]
-JobStatus = Literal["running", "done", "failed"]
 
 # TODO(INFO-REV-UPD-1-0-T5): helpers use app.state directly; full DI deferred
-
-
-@dataclass
-class AgentJob:
-    job_id: str
-    kind: JobKind
-    title: str
-    status: JobStatus = "running"
-    started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    progress: list = field(default_factory=list)
-    summary: Optional[SummaryResult] = None
-    infographics: Optional[GraphicResult] = None
-    feedback: str = ""
-    error: str = ""
-
-    @property
-    def elapsed_seconds(self) -> int:
-        return max(
-            0, int((datetime.now(timezone.utc) - self.started_at).total_seconds())
-        )
-
-    @property
-    def wait_hint(self) -> str:
-        if self.kind == "infographics":
-            return "Image generation may take 1 to 3 minutes. The screen will automatically refresh."
-        return "Article retrieval and summarization may take 30 to 90 seconds. The screen will automatically refresh."
-
-    @property
-    def slow_after_seconds(self) -> int:
-        if self.kind == "infographics":
-            return 240
-        return 120
-
-    @property
-    def is_slow(self) -> bool:
-        return (
-            self.status == "running" and self.elapsed_seconds >= self.slow_after_seconds
-        )
-
-    @property
-    def slow_message(self) -> str:
-        if self.kind == "infographics":
-            return "Image generation is taking longer than usual. If this continues for a few minutes, check the Agent Runtime logs and Gemini image model quota."
-        return "Summarization is taking longer than usual. If this continues for a few minutes, check if the URL content can be retrieved and check the Agent Runtime logs."
-
-    @property
-    def show_estimated_progress(self) -> bool:
-        return self.status == "running" and len(self.progress) <= 1
-
-    @property
-    def estimated_progress(self) -> list[ProgressStep]:
-        if not self.show_estimated_progress:
-            return []
-        if self.kind == "infographics":
-            milestones = [
-                (0, "Sending summary to Agent Runtime"),
-                (10, "Agent deciding style and layout plan"),
-                (30, "Generating image with Gemini"),
-                (80, "Saving artifacts to Cloud Storage"),
-                (105, "Preparing signed URL and returning response"),
-            ]
-        else:
-            milestones = [
-                (0, "Sending summarization workflow to Agent Runtime"),
-                (12, "Retrieving article body"),
-                (35, "Generating 3-line summary and key points"),
-                (60, "Verifying JSON contract and returning response"),
-            ]
-        return _estimated_progress_steps(self.elapsed_seconds, milestones)
 
 
 def _get_summary(app: FastAPI, session_id: str) -> SummaryResult:
@@ -102,10 +28,7 @@ def _get_summary(app: FastAPI, session_id: str) -> SummaryResult:
 def _create_job(
     app: FastAPI, kind: JobKind, title: str, feedback: str = ""
 ) -> AgentJob:
-    job_id = f"{kind}-{uuid4().hex}"
-    job = AgentJob(job_id=job_id, kind=kind, title=title, feedback=feedback)
-    app.state.jobs[job_id] = job
-    return job
+    return app.state.jobs.create(kind=kind, title=title, feedback=feedback)
 
 
 def _retarget_job_response(
@@ -131,24 +54,25 @@ def _schedule_background_task(app: FastAPI, coro) -> None:
 async def _run_summary_job(
     app: FastAPI, job_id: str, url: str, agent_client: AgentClient
 ) -> None:
-    job = app.state.jobs[job_id]
     started = time.perf_counter()
 
     async def update_progress(progress: list) -> None:
-        job.progress = progress
+        app.state.jobs.update(job_id, progress=progress)
 
     try:
         summary = await agent_client.summarize_url(url, on_progress=update_progress)
     except Exception as exc:
         logger.exception("Summary job failed: job_id=%s url=%s", job_id, url)
-        job.status = "failed"
-        job.error = _display_error(exc)
+        app.state.jobs.update(job_id, status="failed", error=_display_error(exc))
         return
 
     app.state.sessions[summary.session_id] = summary
-    job.summary = summary
-    job.progress = summary.progress
-    job.status = "done"
+    app.state.jobs.update(
+        job_id,
+        summary=summary,
+        progress=summary.progress,
+        status="done",
+    )
     _log_job_duration("summary", job_id, started)
 
 
@@ -159,12 +83,11 @@ async def _run_infographics_job(
     feedback: str,
     agent_client: AgentClient,
 ) -> None:
-    job = app.state.jobs[job_id]
-    job.summary = summary
+    app.state.jobs.update(job_id, summary=summary)
     started = time.perf_counter()
 
     async def update_progress(progress: list) -> None:
-        job.progress = progress
+        app.state.jobs.update(job_id, progress=progress)
 
     try:
         if feedback:
@@ -184,14 +107,16 @@ async def _run_infographics_job(
             job_id,
             summary.session_id,
         )
-        job.status = "failed"
-        job.error = _display_error(exc)
+        app.state.jobs.update(job_id, status="failed", error=_display_error(exc))
         return
 
     app.state.infographics_cache[summary.session_id] = infographics
-    job.infographics = infographics
-    job.progress = infographics.progress
-    job.status = "done"
+    app.state.jobs.update(
+        job_id,
+        infographics=infographics,
+        progress=infographics.progress,
+        status="done",
+    )
     _log_job_duration("infographics", job_id, started)
 
 
@@ -243,25 +168,6 @@ def _friendly_error_message(message: str) -> str:
     if "url" in normalized or "fetch" in normalized or "article" in normalized:
         return "Could not retrieve the article body. Try a publicly accessible article URL, or another URL."
     return message
-
-
-def _estimated_progress_steps(
-    elapsed_seconds: int, milestones: list[tuple[int, str]]
-) -> list[ProgressStep]:
-    steps: list[ProgressStep] = []
-    for index, (starts_at, label) in enumerate(milestones):
-        next_starts_at = (
-            milestones[index + 1][0] if index + 1 < len(milestones) else None
-        )
-        if elapsed_seconds < starts_at:
-            status = "pending"
-        elif next_starts_at is not None and elapsed_seconds >= next_starts_at:
-            status = "done"
-        else:
-            status = "running"
-        detail = "Estimated step. The actual result will be reflected after Agent Runtime completes."
-        steps.append(ProgressStep(label, status, detail))
-    return steps
 
 
 def _is_auth_exempt_path(path: str) -> bool:
