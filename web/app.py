@@ -30,6 +30,7 @@ from web.services.sessions import (
     SessionSummaryDictWrapper,
     SessionInfographicsDictWrapper,
 )
+from web.services.runner import JobRunner
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -39,9 +40,15 @@ async def lifespan(app: FastAPI):
     configure_logging()
     assert_auth_config()
     app.state.agent_client = build_agent_client()
+    app.state.job_runner = JobRunner(
+        agent_client=app.state.agent_client,
+        job_store=app.state.job_store,
+        session_store=app.state.session_store,
+    )
     yield
     close_genai_client()
     app.state.agent_client = None
+    app.state.job_runner = None
 
 
 def create_app() -> FastAPI:
