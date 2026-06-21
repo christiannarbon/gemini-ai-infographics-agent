@@ -326,7 +326,7 @@ def test_job_polling_and_swap_animation_are_calm():
 
 
 def test_job_polling_updates_inner_content_until_terminal_swap():
-    from web.runtime import AgentJob
+    from web.services.jobs import AgentJob
 
     jobs = app.state.jobs
 
@@ -557,7 +557,7 @@ def test_user_facing_error_message_mapping():
 
 def test_slow_job_message_after_threshold():
     from datetime import timedelta
-    from web.runtime import AgentJob
+    from web.services.jobs import AgentJob
 
     job = AgentJob(job_id="graphic-test", kind="graphic", title="Generating")
     job.started_at = job.started_at - timedelta(seconds=241)
