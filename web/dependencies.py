@@ -9,7 +9,7 @@ from web.agent_client import AgentClient, build_agent_client
 
 if TYPE_CHECKING:
     from agent.models import GraphicResult
-    from web.runtime import AgentJob
+    from web.services.jobs import JobStore
 
 
 def get_agent_client(request: Request) -> AgentClient:
@@ -26,7 +26,7 @@ def get_templates(request: Request) -> Jinja2Templates:
     return request.app.state.templates
 
 
-def get_jobs(request: Request) -> dict[str, AgentJob]:
+def get_jobs(request: Request) -> JobStore:
     return request.app.state.jobs
 
 
