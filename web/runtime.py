@@ -1,21 +1,11 @@
 from __future__ import annotations
 
-import asyncio
-import logging
-import time
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
 from agent.models import GraphicResult, SummaryResult
-from web.agent_client import AgentClient
-from web.services.jobs import AgentJob, JobKind
-
-BASE_DIR = Path(__file__).resolve().parent
-logger = logging.getLogger(__name__)
-
-# TODO(INFO-REV-UPD-1-0-T5): helpers use app.state directly; full DI deferred
 
 
 def _get_summary(app: FastAPI, session_id: str) -> SummaryResult:
@@ -23,12 +13,6 @@ def _get_summary(app: FastAPI, session_id: str) -> SummaryResult:
     if not summary:
         raise HTTPException(status_code=404, detail="Session not found")
     return summary
-
-
-def _create_job(
-    app: FastAPI, kind: JobKind, title: str, feedback: str = ""
-) -> AgentJob:
-    return app.state.jobs.create(kind=kind, title=title, feedback=feedback)
 
 
 def _retarget_job_response(
@@ -43,81 +27,6 @@ def _retarget_job_response(
 def _download_filename(infographics: GraphicResult) -> str:
     suffix = Path(infographics.artifact_path).suffix or ".bin"
     return f"infographics-{infographics.session_id[:8]}{suffix}"
-
-
-def _schedule_background_task(app: FastAPI, coro) -> None:
-    task = asyncio.create_task(coro)
-    app.state.background_tasks.add(task)
-    task.add_done_callback(app.state.background_tasks.discard)
-
-
-async def _run_summary_job(
-    app: FastAPI, job_id: str, url: str, agent_client: AgentClient
-) -> None:
-    started = time.perf_counter()
-
-    async def update_progress(progress: list) -> None:
-        app.state.jobs.update(job_id, progress=progress)
-
-    try:
-        summary = await agent_client.summarize_url(url, on_progress=update_progress)
-    except Exception as exc:
-        logger.exception("Summary job failed: job_id=%s url=%s", job_id, url)
-        app.state.jobs.update(job_id, status="failed", error=_display_error(exc))
-        return
-
-    app.state.sessions[summary.session_id] = summary
-    app.state.jobs.update(
-        job_id,
-        summary=summary,
-        progress=summary.progress,
-        status="done",
-    )
-    _log_job_duration("summary", job_id, started)
-
-
-async def _run_infographics_job(
-    app: FastAPI,
-    job_id: str,
-    summary: SummaryResult,
-    feedback: str,
-    agent_client: AgentClient,
-) -> None:
-    app.state.jobs.update(job_id, summary=summary)
-    started = time.perf_counter()
-
-    async def update_progress(progress: list) -> None:
-        app.state.jobs.update(job_id, progress=progress)
-
-    try:
-        if feedback:
-            infographics = await agent_client.regenerate_infographics(
-                summary,
-                feedback,
-                on_progress=update_progress,
-            )
-        else:
-            infographics = await agent_client.generate_infographics(
-                summary,
-                on_progress=update_progress,
-            )
-    except Exception as exc:
-        logger.exception(
-            "Infographics job failed: job_id=%s session_id=%s",
-            job_id,
-            summary.session_id,
-        )
-        app.state.jobs.update(job_id, status="failed", error=_display_error(exc))
-        return
-
-    app.state.infographics_cache[summary.session_id] = infographics
-    app.state.jobs.update(
-        job_id,
-        infographics=infographics,
-        progress=infographics.progress,
-        status="done",
-    )
-    _log_job_duration("infographics", job_id, started)
 
 
 def _apply_summary_edits(
@@ -181,12 +90,3 @@ def _safe_next_path(path: str) -> str:
     if path.startswith("/login"):
         return "/"
     return path
-
-
-def _log_job_duration(kind: JobKind, job_id: str, started: float) -> None:
-    logger.info(
-        "job_duration kind=%s job_id=%s elapsed_seconds=%.3f",
-        kind,
-        job_id,
-        time.perf_counter() - started,
-    )
