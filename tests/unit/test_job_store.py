@@ -110,11 +110,33 @@ def test_job_store_ttl_boundary():
 
 
 @pytest.mark.unit
+def test_job_store_update_invalid_fields():
+    store = JobStore()
+    job = store.create(kind="summary", title="Test Job")
+
+    # Update with valid keys
+    store.update(job.job_id, status="done", title="Updated Title")
+    updated = store.get(job.job_id)
+    assert updated.status == "done"
+    assert updated.title == "Updated Title"
+
+    # Update with invalid keys must raise AttributeError
+    with pytest.raises(AttributeError) as exc_info:
+        store.update(job.job_id, staus="done")
+    assert "AgentJob does not have attribute: 'staus'" in str(exc_info.value)
+
+
+@pytest.mark.unit
 def test_job_store_concurrency():
+    # Note: The JobStore is safe for concurrent access within FastAPI because all
+    # async/coroutine execution in the application event loop runs sequentially on a single thread.
+    # Since there are no blocking I/O calls or awaits inside store methods, operations are
+    # atomic relative to other coroutines. We add await asyncio.sleep(0) to interleave the tasks.
     store = JobStore()
 
     async def worker(index: int):
         job = store.create(kind="summary", title=f"Job {index}")
+        await asyncio.sleep(0)
         retrieved = store.get(job.job_id)
         return job, retrieved
 
