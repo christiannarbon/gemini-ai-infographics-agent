@@ -40,7 +40,7 @@ class AgentJob:
     title: str
     status: JobStatus = "running"
     started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    progress: list = field(default_factory=list)
+    progress: list[ProgressStep] = field(default_factory=list)
     summary: Optional[SummaryResult] = None
     infographics: Optional[GraphicResult] = None
     feedback: str = ""
@@ -122,11 +122,15 @@ class JobStore:
         job = self.get(job_id)
         if job:
             for k, v in fields.items():
-                if hasattr(job, k):
-                    setattr(job, k, v)
-            self._evict()
+                if not hasattr(job, k):
+                    raise AttributeError(f"AgentJob does not have attribute: '{k}'")
+                setattr(job, k, v)
+            if "status" in fields:
+                self._evict()
 
     def _evict(self) -> None:
+        # Note: Running jobs are intentionally unbounded because they are few and short-lived in normal operation.
+        # TODO(INFO-REV-UPD-1-0-T6): running jobs are not bounded; add a max-age force-fail if stuck jobs become a problem
         now = datetime.now(timezone.utc)
         terminal_jobs = []
         for job in list(self._jobs.values()):
@@ -148,27 +152,9 @@ class JobStore:
                 self._jobs.pop(job.job_id, None)
 
     # Dictionary interface wrapper for compatibility with tests & legacy code
-    def __getitem__(self, job_id: str) -> AgentJob:
-        return self._jobs[job_id]
-
     def __setitem__(self, job_id: str, job: AgentJob) -> None:
         self._jobs[job_id] = job
         self._evict()
 
-    def __delitem__(self, job_id: str) -> None:
-        self._jobs.pop(job_id, None)
-
-    def __contains__(self, job_id: str) -> bool:
-        return job_id in self._jobs
-
     def pop(self, job_id: str, default: Any = None) -> AgentJob | None:
         return self._jobs.pop(job_id, default)
-
-    def values(self):
-        return self._jobs.values()
-
-    def keys(self):
-        return self._jobs.keys()
-
-    def items(self):
-        return self._jobs.items()
