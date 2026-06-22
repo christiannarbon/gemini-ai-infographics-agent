@@ -2,14 +2,19 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import HTTPException, Request
 from fastapi.responses import HTMLResponse
+
+from typing import TYPE_CHECKING
 
 from agent.models import GraphicResult, SummaryResult
 
+if TYPE_CHECKING:
+    from web.services.sessions import SessionSummaryDictWrapper
 
-def _get_summary(app: FastAPI, session_id: str) -> SummaryResult:
-    summary = app.state.sessions.get(session_id)
+
+def _get_summary(sessions: SessionSummaryDictWrapper, session_id: str) -> SummaryResult:
+    summary = sessions.get(session_id)
     if not summary:
         raise HTTPException(status_code=404, detail="Session not found")
     return summary
