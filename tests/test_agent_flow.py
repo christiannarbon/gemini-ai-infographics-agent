@@ -328,7 +328,7 @@ def test_job_polling_and_swap_animation_are_calm():
 def test_job_polling_updates_inner_content_until_terminal_swap():
     from web.services.jobs import AgentJob
 
-    jobs = app.state.jobs
+    jobs = app.state.job_store
 
     client = TestClient(app)
     job = AgentJob(job_id="summary-test-poll", kind="summary", title="Summarizing")
