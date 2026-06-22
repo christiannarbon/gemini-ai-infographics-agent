@@ -7,7 +7,12 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from web.dependencies import get_templates, get_infographics_cache, get_job_runner
+from web.dependencies import (
+    get_templates,
+    get_infographics_cache,
+    get_job_runner,
+    get_sessions,
+)
 from web.runtime import (
     _apply_summary_edits,
     _download_filename,
@@ -15,8 +20,11 @@ from web.runtime import (
 )
 
 if TYPE_CHECKING:
-    from agent.models import GraphicResult
     from web.services.runner import JobRunner
+    from web.services.sessions import (
+        SessionInfographicsDictWrapper,
+        SessionSummaryDictWrapper,
+    )
 
 router = APIRouter()
 
@@ -29,8 +37,9 @@ async def create_infographics(
     key_points_text: str = Form(""),
     job_runner: JobRunner = Depends(get_job_runner),
     templates: Jinja2Templates = Depends(get_templates),
+    sessions: SessionSummaryDictWrapper = Depends(get_sessions),
 ) -> HTMLResponse:
-    summary = _get_summary(request.app, session_id)
+    summary = _get_summary(sessions, session_id)
     _apply_summary_edits(summary, summary_text, key_points_text)
     job = job_runner.start_infographics(summary, feedback="")
     return templates.TemplateResponse(
@@ -47,8 +56,9 @@ async def regenerate_infographics(
     feedback: str = Form(""),
     job_runner: JobRunner = Depends(get_job_runner),
     templates: Jinja2Templates = Depends(get_templates),
+    sessions: SessionSummaryDictWrapper = Depends(get_sessions),
 ) -> HTMLResponse:
-    summary = _get_summary(request.app, session_id)
+    summary = _get_summary(sessions, session_id)
     job = job_runner.start_infographics(summary, feedback=feedback)
     return templates.TemplateResponse(
         request,
@@ -61,7 +71,9 @@ async def regenerate_infographics(
 async def download_infographics(
     request: Request,
     session_id: str,
-    infographics_cache: dict[str, GraphicResult] = Depends(get_infographics_cache),
+    infographics_cache: SessionInfographicsDictWrapper = Depends(
+        get_infographics_cache
+    ),
 ) -> FileResponse:
     infographics = infographics_cache.get(session_id)
     if not infographics:
