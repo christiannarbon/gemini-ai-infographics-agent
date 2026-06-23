@@ -558,12 +558,14 @@ def test_user_facing_error_message_mapping():
 def test_slow_job_message_after_threshold():
     from datetime import timedelta
     from web.services.jobs import AgentJob
+    from web.views.progress import JobView
 
     job = AgentJob(job_id="graphic-test", kind="graphic", title="Generating")
     job.started_at = job.started_at - timedelta(seconds=241)
 
-    assert job.is_slow is True
-    assert "Agent Runtime logs" in job.slow_message
+    view = JobView(job)
+    assert view.is_slow is True
+    assert "Agent Runtime logs" in view.slow_message
 
 
 def test_runtime_contract_round_trip():
