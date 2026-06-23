@@ -18,6 +18,7 @@ from web.runtime import (
     _download_filename,
     _get_summary,
 )
+from web.views.progress import JobView
 
 if TYPE_CHECKING:
     from web.services.runner import JobRunner
@@ -45,7 +46,7 @@ async def create_infographics(
     return templates.TemplateResponse(
         request,
         "partials/job.html",
-        {"job": job},
+        {"job": JobView(job)},
     )
 
 
@@ -63,7 +64,7 @@ async def regenerate_infographics(
     return templates.TemplateResponse(
         request,
         "partials/job.html",
-        {"job": job},
+        {"job": JobView(job)},
     )
 
 
