@@ -5,6 +5,7 @@ from fastapi.templating import Jinja2Templates
 from web.dependencies import get_templates, get_jobs
 
 from web.runtime import _retarget_job_response
+from web.views.progress import JobView
 
 if TYPE_CHECKING:
     from web.services.jobs import JobStore
@@ -54,12 +55,14 @@ async def poll_job(
             request,
         )
 
+    job_view = JobView(job)
+
     if job.status == "failed":
         return _retarget_job_response(
             templates.TemplateResponse(
                 request,
                 "partials/job.html",
-                {"job": job},
+                {"job": job_view},
             ),
             job.job_id,
             request,
@@ -69,11 +72,11 @@ async def poll_job(
         return templates.TemplateResponse(
             request,
             "partials/job_content.html",
-            {"job": job},
+            {"job": job_view},
         )
 
     return templates.TemplateResponse(
         request,
         "partials/job.html",
-        {"job": job},
+        {"job": job_view},
     )
