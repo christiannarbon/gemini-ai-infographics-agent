@@ -7,6 +7,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from web.dependencies import get_templates, get_job_runner
+from web.views.progress import JobView
 
 if TYPE_CHECKING:
     from web.services.runner import JobRunner
@@ -25,5 +26,5 @@ async def summarize(
     return templates.TemplateResponse(
         request,
         "partials/job.html",
-        {"job": job},
+        {"job": JobView(job)},
     )
