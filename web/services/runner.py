@@ -5,7 +5,7 @@ import logging
 import time
 from typing import TYPE_CHECKING
 
-from web.runtime import _display_error
+from web.views.errors import display_error
 
 if TYPE_CHECKING:
     from agent.models import SummaryResult
@@ -62,7 +62,7 @@ class JobRunner:
             )
         except Exception as exc:
             logger.exception("Summary job failed: job_id=%s url=%s", job_id, url)
-            self._job_store.update(job_id, status="failed", error=_display_error(exc))
+            self._job_store.update(job_id, status="failed", error=display_error(exc))
             return
 
         self._session_store.set_summary(summary.session_id, summary)
@@ -101,7 +101,7 @@ class JobRunner:
                 job_id,
                 summary.session_id,
             )
-            self._job_store.update(job_id, status="failed", error=_display_error(exc))
+            self._job_store.update(job_id, status="failed", error=display_error(exc))
             return
 
         self._session_store.set_infographic(summary.session_id, infographics)
