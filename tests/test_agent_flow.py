@@ -539,15 +539,15 @@ def test_agent_runtime_requirements_file_omits_comments_and_blank_lines(
 
 
 def test_user_facing_error_message_mapping():
-    from web.runtime import _display_error
+    from web.views.errors import display_error
 
-    model_error = _display_error(
+    model_error = display_error(
         RuntimeError(
             "Publisher Model projects/demo/locations/us-central1/models/gemini-3.5-flash was not found"
         )
     )
-    signed_url_error = _display_error(RuntimeError("signBlob permission denied"))
-    empty_error = _display_error(AssertionError())
+    signed_url_error = display_error(RuntimeError("signBlob permission denied"))
+    empty_error = display_error(AssertionError())
 
     assert "Gemini model not found" in model_error
     assert "Technical Details:" in model_error
