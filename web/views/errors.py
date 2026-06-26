@@ -33,5 +33,7 @@ def display_error(exc: Exception) -> str:
     technical_detail = raw_message or f"{type(exc).__name__}: {exc!r}"
     friendly_message = _friendly_error_message(technical_detail)
     if friendly_message == technical_detail:
-        return friendly_message
+        # TODO(INFO-REV-UPD-1-0-T7): generic friendly fallback; see INFO-REV-5-2
+        fallback = "An unexpected error occurred during processing."
+        return f"{fallback}\nTechnical Details: {technical_detail}"
     return f"{friendly_message}\nTechnical Details: {technical_detail}"
