@@ -560,12 +560,117 @@ def test_slow_job_message_after_threshold():
     from web.services.jobs import AgentJob
     from web.views.progress import JobView
 
-    job = AgentJob(job_id="graphic-test", kind="graphic", title="Generating")
-    job.started_at = job.started_at - timedelta(seconds=241)
+    # Infographics job slow threshold: 240 seconds
+    # Case A: exactly at or above threshold (241s) -> is_slow should be True
+    job_info_slow = AgentJob(
+        job_id="graphic-test-slow", kind="infographics", title="Generating"
+    )
+    job_info_slow.started_at = job_info_slow.started_at - timedelta(seconds=241)
+    view_info_slow = JobView(job_info_slow)
+    assert view_info_slow.is_slow is True
+    assert "Gemini image model quota" in view_info_slow.slow_message
 
+    # Case B: below threshold (239s) -> is_slow should be False
+    job_info_fast = AgentJob(
+        job_id="graphic-test-fast", kind="infographics", title="Generating"
+    )
+    job_info_fast.started_at = job_info_fast.started_at - timedelta(seconds=239)
+    view_info_fast = JobView(job_info_fast)
+    assert view_info_fast.is_slow is False
+
+    # Summary job slow threshold: 120 seconds
+    # Case C: exactly at or above threshold (120s) -> is_slow should be True
+    job_sum_slow = AgentJob(job_id="sum-test-slow", kind="summary", title="Summarizing")
+    job_sum_slow.started_at = job_sum_slow.started_at - timedelta(seconds=120)
+    view_sum_slow = JobView(job_sum_slow)
+    assert view_sum_slow.is_slow is True
+    assert "check if the URL content can be retrieved" in view_sum_slow.slow_message
+
+    # Case D: below threshold (119s) -> is_slow should be False
+    job_sum_fast = AgentJob(job_id="sum-test-fast", kind="summary", title="Summarizing")
+    job_sum_fast.started_at = job_sum_fast.started_at - timedelta(seconds=119)
+    view_sum_fast = JobView(job_sum_fast)
+    assert view_sum_fast.is_slow is False
+
+
+def test_job_view_show_estimated_progress_gating():
+    from web.services.jobs import AgentJob
+    from web.views.progress import JobView
+    from agent.models import ProgressStep
+
+    # Case A: status="running", progress is empty -> True
+    job_running_empty = AgentJob(
+        job_id="test1", kind="summary", title="Test", status="running", progress=[]
+    )
+    assert JobView(job_running_empty).show_estimated_progress is True
+
+    # Case B: status="running", progress has 1 step -> True
+    job_running_one = AgentJob(
+        job_id="test2",
+        kind="summary",
+        title="Test",
+        status="running",
+        progress=[ProgressStep("step1", "running", "detail")],
+    )
+    assert JobView(job_running_one).show_estimated_progress is True
+
+    # Case C: status="running", progress has 2 steps -> False
+    job_running_two = AgentJob(
+        job_id="test3",
+        kind="summary",
+        title="Test",
+        status="running",
+        progress=[
+            ProgressStep("step1", "done", "detail"),
+            ProgressStep("step2", "running", "detail"),
+        ],
+    )
+    assert JobView(job_running_two).show_estimated_progress is False
+
+    # Case D: status="done", progress is empty -> False
+    job_done_empty = AgentJob(
+        job_id="test4", kind="summary", title="Test", status="done", progress=[]
+    )
+    assert JobView(job_done_empty).show_estimated_progress is False
+
+    # Case E: status="failed", progress is empty -> False
+    job_failed_empty = AgentJob(
+        job_id="test5", kind="summary", title="Test", status="failed", progress=[]
+    )
+    assert JobView(job_failed_empty).show_estimated_progress is False
+
+
+def test_job_view_estimated_progress_milestones():
+    from datetime import timedelta
+    from web.services.jobs import AgentJob
+    from web.views.progress import JobView
+
+    # Infographics milestones in progress.py:
+    # 0: "Sending summary to Agent Runtime"
+    # 10: "Agent deciding style and layout plan"
+    # 30: "Generating image with Gemini"
+    # 80: "Saving artifacts to Cloud Storage"
+    # 105: "Preparing signed URL and returning response"
+
+    # Set elapsed time to 15 seconds (past the 2nd milestone boundary at 10s, but before 30s)
+    job = AgentJob(job_id="test-milestone", kind="infographics", title="Test")
+    job.started_at = job.started_at - timedelta(seconds=15)
     view = JobView(job)
-    assert view.is_slow is True
-    assert "Agent Runtime logs" in view.slow_message
+
+    steps = view.estimated_progress
+    assert len(steps) == 5
+
+    # First step (starts_at=0, next starts_at=10): elapsed 15 >= 10 -> status="done"
+    assert steps[0].label == "Sending summary to Agent Runtime"
+    assert steps[0].status == "done"
+
+    # Second step (starts_at=10, next starts_at=30): elapsed 15 is >= 10 and < 30 -> status="running"
+    assert steps[1].label == "Agent deciding style and layout plan"
+    assert steps[1].status == "running"
+
+    # Third step (starts_at=30, next starts_at=80): elapsed 15 < 30 -> status="pending"
+    assert steps[2].label == "Generating image with Gemini"
+    assert steps[2].status == "pending"
 
 
 def test_runtime_contract_round_trip():
