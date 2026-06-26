@@ -28,18 +28,23 @@ def _estimated_progress_steps(
     return steps
 
 
+# TODO(INFO-REV-UPD-1-0-T7): JobView is a general job presenter; consider views/jobs.py
 class JobView:
     def __init__(self, job: AgentJob):
         self._job = job
+        # Snapshot elapsed_seconds once at construction time for consistency
+        self._elapsed_seconds = max(
+            0, int((datetime.now(timezone.utc) - job.started_at).total_seconds())
+        )
 
     def __getattr__(self, name: str) -> Any:
+        if name.startswith("_") or name == "job":
+            raise AttributeError(name)
         return getattr(self._job, name)
 
     @property
     def elapsed_seconds(self) -> int:
-        return max(
-            0, int((datetime.now(timezone.utc) - self._job.started_at).total_seconds())
-        )
+        return self._elapsed_seconds
 
     @property
     def wait_hint(self) -> str:
