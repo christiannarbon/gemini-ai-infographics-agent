@@ -20,7 +20,11 @@ from agent.actions import (
 from agent.adk_agent import run_narration_turn
 from agent.models import GraphicResult, SummaryResult
 from agent.models import ProgressStep
-from agent.runtime_contract import RuntimeSummaryPayload, RuntimeWorkflowResponse
+from agent.runtime_contract import (
+    RuntimeSummaryPayload,
+    RuntimeWorkflowResponse,
+    convert_model,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +93,7 @@ class RuntimeAgentClient:
         )
         if not response.summary:
             raise RuntimeError("Agent Runtime response did not include summary")
-        return response.summary.to_result()
+        return convert_model(response.summary, SummaryResult)
 
     async def generate_infographics(
         self,
@@ -102,14 +106,14 @@ class RuntimeAgentClient:
         response = await self._run_runtime_operation(
             {
                 "operation": "generate_infographics",
-                "summary": RuntimeSummaryPayload.from_result(summary).model_dump(
+                "summary": convert_model(summary, RuntimeSummaryPayload).model_dump(
                     mode="json"
                 ),
             }
         )
         if not response.infographics:
             raise RuntimeError("Agent Runtime response did not include infographics")
-        return response.infographics.to_result()
+        return convert_model(response.infographics, GraphicResult)
 
     async def regenerate_infographics(
         self,
@@ -123,7 +127,7 @@ class RuntimeAgentClient:
         response = await self._run_runtime_operation(
             {
                 "operation": "regenerate_infographics",
-                "summary": RuntimeSummaryPayload.from_result(summary).model_dump(
+                "summary": convert_model(summary, RuntimeSummaryPayload).model_dump(
                     mode="json"
                 ),
                 "feedback": feedback,
@@ -131,7 +135,7 @@ class RuntimeAgentClient:
         )
         if not response.infographics:
             raise RuntimeError("Agent Runtime response did not include infographics")
-        return response.infographics.to_result()
+        return convert_model(response.infographics, GraphicResult)
 
     async def _run_runtime_operation(self, payload: dict) -> RuntimeWorkflowResponse:
         remote_agent = self._get_remote_agent()
