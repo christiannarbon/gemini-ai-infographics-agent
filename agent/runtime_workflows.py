@@ -8,23 +8,25 @@ from agent.actions import (
     summarize_url,
 )
 from agent.config import get_settings
+from agent.models import SummaryResult
 from agent.runtime_contract import (
     RuntimeInfographicsPayload,
     RuntimeSummaryPayload,
     RuntimeWorkflowResponse,
+    convert_model,
 )
 
 
 async def dispatch_runtime_operation(
     payload: dict[str, Any],
 ) -> RuntimeWorkflowResponse:
-    """Dispatch one runtime operation without involving an LLM routing step."""
-    operation = payload.get("operation")
+    """Routing entry point for GCP Agent Runtime workflow orchestration."""
+    operation = payload.get("operation", "unknown")
     if operation == "summarize_url":
-        url = str(payload.get("url") or "").strip()
+        url = payload.get("url")
         if not url:
-            raise ValueError("summarize_url requires a non-empty url")
-        return await runtime_summarize_url(url)
+            raise ValueError("summarize_url requires a url parameter")
+        return await runtime_summarize_url(str(url))
     if operation == "generate_infographics":
         summary = payload.get("summary")
         if not isinstance(summary, dict):
@@ -44,7 +46,7 @@ async def runtime_summarize_url(url: str) -> RuntimeWorkflowResponse:
     summary = await summarize_url(url)
     return RuntimeWorkflowResponse(
         operation="summarize_url",
-        summary=RuntimeSummaryPayload.from_result(summary),
+        summary=convert_model(summary, RuntimeSummaryPayload),
     )
 
 
@@ -53,11 +55,13 @@ async def runtime_generate_infographics(
 ) -> RuntimeWorkflowResponse:
     """Generate an infographics artifact from a summary payload."""
     _assert_runtime_artifact_store()
-    summary_result = RuntimeSummaryPayload.model_validate(summary).to_result()
+    summary_result = convert_model(
+        RuntimeSummaryPayload.model_validate(summary), SummaryResult
+    )
     infographics = await generate_infographics(summary_result)
     return RuntimeWorkflowResponse(
         operation="generate_infographics",
-        infographics=RuntimeInfographicsPayload.from_result(infographics),
+        infographics=convert_model(infographics, RuntimeInfographicsPayload),
     )
 
 
@@ -66,11 +70,13 @@ async def runtime_regenerate_infographics(
 ) -> RuntimeWorkflowResponse:
     """Regenerate an infographics artifact from a summary payload and feedback."""
     _assert_runtime_artifact_store()
-    summary_result = RuntimeSummaryPayload.model_validate(summary).to_result()
+    summary_result = convert_model(
+        RuntimeSummaryPayload.model_validate(summary), SummaryResult
+    )
     infographics = await regenerate_infographics(summary_result, feedback)
     return RuntimeWorkflowResponse(
         operation="regenerate_infographics",
-        infographics=RuntimeInfographicsPayload.from_result(infographics),
+        infographics=convert_model(infographics, RuntimeInfographicsPayload),
     )
 
 
