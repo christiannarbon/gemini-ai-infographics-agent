@@ -675,7 +675,11 @@ def test_job_view_estimated_progress_milestones():
 
 def test_runtime_contract_round_trip():
     from agent.models import ProgressStep, SummaryResult
-    from agent.runtime_contract import RuntimeSummaryPayload, RuntimeWorkflowResponse
+    from agent.runtime_contract import (
+        RuntimeSummaryPayload,
+        RuntimeWorkflowResponse,
+        convert_model,
+    )
 
     summary = SummaryResult(
         session_id="session-1",
@@ -690,13 +694,13 @@ def test_runtime_contract_round_trip():
 
     response = RuntimeWorkflowResponse(
         operation="summarize_url",
-        summary=RuntimeSummaryPayload.from_result(summary),
+        summary=convert_model(summary, RuntimeSummaryPayload),
     )
     restored = RuntimeWorkflowResponse.model_validate_json(response.model_dump_json())
 
     assert restored.summary is not None
-    assert restored.summary.to_result().title == "Demo"
-    assert restored.summary.to_result().progress[0].detail == "ok"
+    assert convert_model(restored.summary, SummaryResult).title == "Demo"
+    assert convert_model(restored.summary, SummaryResult).progress[0].detail == "ok"
 
 
 def test_runtime_client_parses_function_response_event():
