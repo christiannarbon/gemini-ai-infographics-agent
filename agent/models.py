@@ -1,21 +1,28 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Literal
+from typing import Any, Literal
 
+from pydantic import BaseModel, Field
 
 StepStatus = Literal["pending", "running", "done", "failed"]
 
 
-@dataclass
-class ProgressStep:
+class ProgressStep(BaseModel):
     label: str
     status: StepStatus = "pending"
     detail: str = ""
 
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        if len(args) >= 1:
+            kwargs["label"] = args[0]
+        if len(args) >= 2:
+            kwargs["status"] = args[1]
+        if len(args) >= 3:
+            kwargs["detail"] = args[2]
+        super().__init__(**kwargs)
 
-@dataclass
-class SummaryResult:
+
+class SummaryResult(BaseModel):
     session_id: str
     url: str
     title: str
@@ -23,11 +30,10 @@ class SummaryResult:
     key_points: list[str]
     article_text: str
     text_backend: str = "mock"
-    progress: list[ProgressStep] = field(default_factory=list)
+    progress: list[ProgressStep] = Field(default_factory=list)
 
 
-@dataclass
-class GraphicResult:
+class GraphicResult(BaseModel):
     session_id: str
     visual_plan: list[str]
     artifact_path: str
@@ -37,4 +43,4 @@ class GraphicResult:
     artifact_mime_type: str = "image/svg+xml"
     visual_style: str = "pop"
     style_reason: str = ""
-    progress: list[ProgressStep] = field(default_factory=list)
+    progress: list[ProgressStep] = Field(default_factory=list)
