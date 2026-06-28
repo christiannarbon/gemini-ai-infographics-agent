@@ -25,7 +25,7 @@ def test_session_store_symmetric_deletes():
         key_points=["p1", "p2"],
         article_text="body",
         text_backend="gemini:test",
-        progress=[ProgressStep("done", "done", "ok")],
+        progress=[ProgressStep(label="done", status="done", detail="ok")],
     )
 
     graphic = GraphicResult(
