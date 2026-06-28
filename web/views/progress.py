@@ -24,7 +24,7 @@ def _estimated_progress_steps(
         else:
             status = "running"
         detail = "Estimated step. The actual result will be reflected after Agent Runtime completes."
-        steps.append(ProgressStep(label, status, detail))
+        steps.append(ProgressStep(label=label, status=status, detail=detail))
     return steps
 
 
