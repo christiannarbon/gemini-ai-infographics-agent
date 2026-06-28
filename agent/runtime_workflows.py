@@ -55,6 +55,7 @@ async def runtime_generate_infographics(
 ) -> RuntimeWorkflowResponse:
     """Generate an infographics artifact from a summary payload."""
     _assert_runtime_artifact_store()
+    # Note: Double-validation via RuntimeSummaryPayload is deliberate to supply permissive defaults for partial payloads.
     summary_result = convert_model(
         RuntimeSummaryPayload.model_validate(summary), SummaryResult
     )
@@ -70,6 +71,7 @@ async def runtime_regenerate_infographics(
 ) -> RuntimeWorkflowResponse:
     """Regenerate an infographics artifact from a summary payload and feedback."""
     _assert_runtime_artifact_store()
+    # Note: Double-validation via RuntimeSummaryPayload is deliberate to supply permissive defaults for partial payloads.
     summary_result = convert_model(
         RuntimeSummaryPayload.model_validate(summary), SummaryResult
     )
