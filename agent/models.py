@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -12,15 +12,6 @@ class ProgressStep(BaseModel):
     status: StepStatus = "pending"
     detail: str = ""
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        if len(args) >= 1:
-            kwargs["label"] = args[0]
-        if len(args) >= 2:
-            kwargs["status"] = args[1]
-        if len(args) >= 3:
-            kwargs["detail"] = args[2]
-        super().__init__(**kwargs)
-
 
 class SummaryResult(BaseModel):
     session_id: str
@@ -29,6 +20,7 @@ class SummaryResult(BaseModel):
     summary_lines: list[str]
     key_points: list[str]
     article_text: str
+    # Note: Domain default is 'mock'; wire-contract default is 'unknown'
     text_backend: str = "mock"
     progress: list[ProgressStep] = Field(default_factory=list)
 
@@ -41,6 +33,7 @@ class GraphicResult(BaseModel):
     image_backend: str = "fallback-svg"
     artifact_url: str = ""
     artifact_mime_type: str = "image/svg+xml"
+    # Note: Domain default is 'pop'; wire-contract default is 'business'
     visual_style: str = "pop"
     style_reason: str = ""
     progress: list[ProgressStep] = Field(default_factory=list)
