@@ -21,9 +21,11 @@ async def summarize_url(
     workflow_started = time.perf_counter()
     session_id = uuid4().hex
     progress = [
-        ProgressStep("URL received", "done", url),
-        ProgressStep("Fetching article body", "running"),
-        ProgressStep("Generating 3-line summary and key points", "pending"),
+        ProgressStep(label="URL received", status="done", detail=url),
+        ProgressStep(label="Fetching article body", status="running"),
+        ProgressStep(
+            label="Generating 3-line summary and key points", status="pending"
+        ),
     ]
     await _emit(progress, on_progress)
     await _mock_step_delay()
@@ -31,8 +33,12 @@ async def summarize_url(
     started = time.perf_counter()
     article = await tools.fetch_article(url)
     _log_duration("summarize_url", "fetch_article", started, session_id=session_id)
-    progress[1] = ProgressStep("Article body fetched", "done", article["title"])
-    progress[2] = ProgressStep("Generating 3-line summary and key points", "running")
+    progress[1] = ProgressStep(
+        label="Article body fetched", status="done", detail=article["title"]
+    )
+    progress[2] = ProgressStep(
+        label="Generating 3-line summary and key points", status="running"
+    )
     await _emit(progress, on_progress)
     await _mock_step_delay()
 
@@ -41,7 +47,9 @@ async def summarize_url(
     _log_duration("summarize_url", "summarize_article", started, session_id=session_id)
     text_backend = summary.get("backend", "unknown")
     progress[2] = ProgressStep(
-        "3-line summary and key points generated", "done", text_backend
+        label="3-line summary and key points generated",
+        status="done",
+        detail=text_backend,
     )
     await _emit(progress, on_progress)
 
@@ -82,11 +90,11 @@ async def _build_infographics(
 ) -> GraphicResult:
     workflow_started = time.perf_counter()
     progress = [
-        ProgressStep("Summary confirmation received", "done"),
-        ProgressStep("Agent deciding visual style", "running"),
-        ProgressStep("Creating infographics layout plan", "pending"),
-        ProgressStep("Generating image", "pending"),
-        ProgressStep("Saving artifact", "pending"),
+        ProgressStep(label="Summary confirmation received", status="done"),
+        ProgressStep(label="Agent deciding visual style", status="running"),
+        ProgressStep(label="Creating infographics layout plan", status="pending"),
+        ProgressStep(label="Generating image", status="pending"),
+        ProgressStep(label="Saving artifact", status="pending"),
     ]
     await _emit(progress, on_progress)
     await _mock_step_delay()
@@ -99,11 +107,13 @@ async def _build_infographics(
         "generate_infographic", "decide_style", started, session_id=summary.session_id
     )
     progress[1] = ProgressStep(
-        f"Agent selected {style_decision.style} style",
-        "done",
-        style_decision.reason,
+        label=f"Agent selected {style_decision.style} style",
+        status="done",
+        detail=style_decision.reason,
     )
-    progress[2] = ProgressStep("Agent creating infographics layout plan", "running")
+    progress[2] = ProgressStep(
+        label="Agent creating infographics layout plan", status="running"
+    )
     await _emit(progress, on_progress)
     await _mock_step_delay()
 
@@ -121,9 +131,11 @@ async def _build_infographics(
         session_id=summary.session_id,
     )
     progress[2] = ProgressStep(
-        "Agent created infographics layout plan", "done", style_decision.style
+        label="Agent created infographics layout plan",
+        status="done",
+        detail=style_decision.style,
     )
-    progress[3] = ProgressStep("Generating image", "running")
+    progress[3] = ProgressStep(label="Generating image", status="running")
     await _emit(progress, on_progress)
     await _mock_step_delay()
 
@@ -142,7 +154,9 @@ async def _build_infographics(
     if generated_image.data:
         svg = ""
         image_backend = generated_image.backend
-        progress[3] = ProgressStep("Image generated", "done", image_backend)
+        progress[3] = ProgressStep(
+            label="Image generated", status="done", detail=image_backend
+        )
     else:
         svg = await tools.render_svg(
             summary.title,
@@ -154,12 +168,14 @@ async def _build_infographics(
         )
         image_backend = generated_image.backend
         progress[3] = ProgressStep(
-            "Image generation completed with fallback SVG", "done", image_backend
+            label="Image generation completed with fallback SVG",
+            status="done",
+            detail=image_backend,
         )
     await _emit(progress, on_progress)
     await _mock_step_delay()
 
-    progress[4] = ProgressStep("Saving artifact", "running")
+    progress[4] = ProgressStep(label="Saving artifact", status="running")
     await _emit(progress, on_progress)
     started = time.perf_counter()
     if generated_image.data:
@@ -180,7 +196,9 @@ async def _build_infographics(
     _log_duration(
         "generate_infographic", "save_artifact", started, session_id=summary.session_id
     )
-    progress[4] = ProgressStep("Artifact saved", "done", artifact_path)
+    progress[4] = ProgressStep(
+        label="Artifact saved", status="done", detail=artifact_path
+    )
     await _emit(progress, on_progress)
 
     _log_duration(
@@ -205,7 +223,10 @@ async def _emit(
 ) -> None:
     if not on_progress:
         return
-    snapshot = [ProgressStep(step.label, step.status, step.detail) for step in progress]
+    snapshot = [
+        ProgressStep(label=step.label, status=step.status, detail=step.detail)
+        for step in progress
+    ]
     result = on_progress(snapshot)
     if result:
         await result
