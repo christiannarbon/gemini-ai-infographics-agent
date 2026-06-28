@@ -283,7 +283,7 @@ class AdkAgentClient(LocalAgentClient):
         prompt: str,
         on_progress: Optional[ProgressCallback],
     ) -> list[ProgressStep]:
-        running = [ProgressStep(label, "running")]
+        running = [ProgressStep(label=label, status="running")]
         await _invoke_progress(on_progress, running)
 
         try:
@@ -291,7 +291,7 @@ class AdkAgentClient(LocalAgentClient):
         except Exception as exc:
             detail = f"adk:fallback:{str(exc)[:120]}"
 
-        done = [ProgressStep(label, "done", detail)]
+        done = [ProgressStep(label=label, status="done", detail=detail)]
         await _invoke_progress(on_progress, done)
         return done
 
@@ -309,7 +309,7 @@ async def _emit_runtime_status(
     label: str,
     on_progress: Optional[ProgressCallback],
 ) -> None:
-    await _invoke_progress(on_progress, [ProgressStep(label, "running")])
+    await _invoke_progress(on_progress, [ProgressStep(label=label, status="running")])
 
 
 async def _invoke_progress(
