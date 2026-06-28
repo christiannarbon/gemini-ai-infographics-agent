@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal, Optional, Type, TypeVar
+from typing import Literal, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -11,7 +11,7 @@ RuntimeOperation = Literal[
 T = TypeVar("T", bound=BaseModel)
 
 
-def convert_model(source: BaseModel, target_type: Type[T]) -> T:
+def convert_model(source: BaseModel, target_type: type[T]) -> T:
     """Helper to convert between compatible Pydantic models by dumping and validating."""
     return target_type.model_validate(source.model_dump())
 
@@ -29,6 +29,7 @@ class RuntimeSummaryPayload(BaseModel):
     summary_lines: list[str] = Field(default_factory=list)
     key_points: list[str] = Field(default_factory=list)
     article_text: str = ""
+    # Note: Wire-contract default is 'unknown'; domain default is 'mock'
     text_backend: str = "unknown"
     progress: list[RuntimeProgressStep] = Field(default_factory=list)
 
@@ -41,6 +42,7 @@ class RuntimeInfographicsPayload(BaseModel):
     image_backend: str = "fallback-svg"
     artifact_url: str = ""
     artifact_mime_type: str = "image/svg+xml"
+    # Note: Wire-contract default is 'business'; domain default is 'pop'
     visual_style: str = "business"
     style_reason: str = ""
     progress: list[RuntimeProgressStep] = Field(default_factory=list)
@@ -48,6 +50,6 @@ class RuntimeInfographicsPayload(BaseModel):
 
 class RuntimeWorkflowResponse(BaseModel):
     operation: RuntimeOperation
-    summary: Optional[RuntimeSummaryPayload] = None
-    infographics: Optional[RuntimeInfographicsPayload] = None
+    summary: RuntimeSummaryPayload | None = None
+    infographics: RuntimeInfographicsPayload | None = None
     error: str = ""
