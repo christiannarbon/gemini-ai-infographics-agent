@@ -610,7 +610,7 @@ def test_job_view_show_estimated_progress_gating():
         kind="summary",
         title="Test",
         status="running",
-        progress=[ProgressStep("step1", "running", "detail")],
+        progress=[ProgressStep(label="step1", status="running", detail="detail")],
     )
     assert JobView(job_running_one).show_estimated_progress is True
 
@@ -621,8 +621,8 @@ def test_job_view_show_estimated_progress_gating():
         title="Test",
         status="running",
         progress=[
-            ProgressStep("step1", "done", "detail"),
-            ProgressStep("step2", "running", "detail"),
+            ProgressStep(label="step1", status="done", detail="detail"),
+            ProgressStep(label="step2", status="running", detail="detail"),
         ],
     )
     assert JobView(job_running_two).show_estimated_progress is False
@@ -689,7 +689,7 @@ def test_runtime_contract_round_trip():
         key_points=["p1", "p2", "p3", "p4"],
         article_text="body",
         text_backend="gemini:test",
-        progress=[ProgressStep("done", "done", "ok")],
+        progress=[ProgressStep(label="done", status="done", detail="ok")],
     )
 
     response = RuntimeWorkflowResponse(
@@ -861,7 +861,9 @@ def test_runtime_dispatcher_calls_summary_workflow_directly(monkeypatch):
             key_points=["p1", "p2", "p3", "p4"],
             article_text="body",
             text_backend="test",
-            progress=[ProgressStep("direct dispatch", "done", "ok")],
+            progress=[
+                ProgressStep(label="direct dispatch", status="done", detail="ok")
+            ],
         )
 
     monkeypatch.setattr(runtime_workflows, "summarize_url", fake_summarize_url)
@@ -1097,3 +1099,65 @@ def _poll_job(client: TestClient, job_id: str) -> str:
         if f'id="{job_id}"' not in response.text:
             return response.text
     raise AssertionError(f"job did not finish: {job_id}")
+
+
+def test_runtime_and_domain_model_parity():
+    from agent.models import ProgressStep, SummaryResult, GraphicResult
+    from agent.runtime_contract import (
+        RuntimeProgressStep,
+        RuntimeSummaryPayload,
+        RuntimeInfographicsPayload,
+        convert_model,
+    )
+
+    # 1. Assert field-name sets match exactly
+    assert set(ProgressStep.model_fields) == set(RuntimeProgressStep.model_fields)
+    assert set(SummaryResult.model_fields) == set(RuntimeSummaryPayload.model_fields)
+    assert set(GraphicResult.model_fields) == set(
+        RuntimeInfographicsPayload.model_fields
+    )
+
+    # 2. Assert lossless round-trip on a fully-populated SummaryResult
+    summary = SummaryResult(
+        session_id="session-123",
+        url="https://example.com/article",
+        title="Sample Article",
+        summary_lines=["Line 1", "Line 2", "Line 3"],
+        key_points=["Point 1", "Point 2", "Point 3", "Point 4"],
+        article_text="Full article body content goes here.",
+        text_backend="gemini-2.5",
+        progress=[
+            ProgressStep(
+                label="URL received",
+                status="done",
+                detail="https://example.com/article",
+            ),
+            ProgressStep(label="Fetching body", status="running", detail=""),
+        ],
+    )
+
+    payload = convert_model(summary, RuntimeSummaryPayload)
+    restored = convert_model(payload, SummaryResult)
+
+    assert restored.model_dump() == summary.model_dump()
+
+    # 3. Assert lossless round-trip on a fully-populated GraphicResult
+    graphic = GraphicResult(
+        session_id="session-123",
+        visual_plan=["Plan step 1", "Plan step 2"],
+        artifact_path="/path/to/artifact.svg",
+        svg="<svg></svg>",
+        image_backend="gemini-flash",
+        artifact_url="http://storage.googleapis.com/bucket/artifact.svg",
+        artifact_mime_type="image/svg+xml",
+        visual_style="pop",
+        style_reason="Colorful topic",
+        progress=[
+            ProgressStep(label="deciding style", status="done", detail="pop"),
+        ],
+    )
+
+    payload_g = convert_model(graphic, RuntimeInfographicsPayload)
+    restored_g = convert_model(payload_g, GraphicResult)
+
+    assert restored_g.model_dump() == graphic.model_dump()
