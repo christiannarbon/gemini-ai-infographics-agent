@@ -7,7 +7,7 @@ Depends on: standard library and pydantic.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -47,3 +47,26 @@ class GeneratedImage:
     data: bytes
     mime_type: str
     backend: str
+
+
+class ArticleContent(BaseModel):
+    title: str
+    text: str
+
+    def __getitem__(self, item: str) -> Any:
+        return getattr(self, item)
+
+    def get(self, item: str, default: Any = None) -> Any:
+        return getattr(self, item, default)
+
+
+class SummaryToolResult(BaseModel):
+    summary_lines: list[str]
+    key_points: list[str]
+    backend: str
+
+    def __getitem__(self, item: str) -> Any:
+        return getattr(self, item)
+
+    def get(self, item: str, default: Any = None) -> Any:
+        return getattr(self, item, default)
