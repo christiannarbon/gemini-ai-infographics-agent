@@ -22,6 +22,7 @@ from agent.tools.schemas import (
     ArticleSummary,
     GeneratedImage,
     StyleDecision,
+    SummaryToolResult,
     VisualPlan,
 )
 from agent.tools import prompts
@@ -37,7 +38,7 @@ _DEFAULT_PLAN_ITEMS = [
 ]
 
 
-async def summarize_article(title: str, article_text: str) -> dict[str, list[str]]:
+async def summarize_article(title: str, article_text: str) -> SummaryToolResult:
     """Create an English three-line summary and key points from article text.
 
     Args:
@@ -45,23 +46,23 @@ async def summarize_article(title: str, article_text: str) -> dict[str, list[str
         article_text: Cleaned article body text.
 
     Returns:
-        A dictionary containing `summary_lines`, `key_points`, and `backend`.
+        A SummaryToolResult model.
     """
     if is_mock_mode():
-        return {
-            "summary_lines": [
+        return SummaryToolResult(
+            summary_lines=[
                 "The Agent proceeds from article retrieval to summarization and image generation as a sequence of workflows.",
                 "In ADK, we implement separated tools such as fetch / summarize / plan / render.",
                 "Phase 1 verifies the demo experience without external APIs, using mock mode and fallback SVG.",
             ],
-            "key_points": [
+            key_points=[
                 "Article retrieval, summarization, composition plan creation, and image generation are handled as a single flow, allowing users to check the results just by entering a URL.",
                 "By splitting ADK tools into smaller pieces, we make it easier to track responsibilities like article retrieval, summarization, drawing, and saving.",
                 "With mock mode and fallback SVG, you can confirm screen transitions and experience early on, even when external APIs are unavailable.",
                 "Generated images are saved as artifacts, which can be expanded later to use Cloud Storage or signed URLs.",
             ],
-            "backend": "mock",
-        }
+            backend="mock",
+        )
 
     prompt = prompts.build_summary_prompt(title, article_text)
     try:
@@ -72,11 +73,11 @@ async def summarize_article(title: str, article_text: str) -> dict[str, list[str
         logger.warning("Gemini summarize failed, falling back to heuristic: %s", exc)
         return _heuristic_summary(title, article_text, reason=str(exc))
 
-    return {
-        "summary_lines": summary.summary_lines[:3],
-        "key_points": summary.key_points[:6],
-        "backend": f"gemini:{text_model_name()}",
-    }
+    return SummaryToolResult(
+        summary_lines=summary.summary_lines[:3],
+        key_points=summary.key_points[:6],
+        backend=f"gemini:{text_model_name()}",
+    )
 
 
 async def decide_style(
@@ -249,18 +250,18 @@ async def generate_image_artifact(
 
 def _heuristic_summary(
     title: str, article_text: str, reason: str = ""
-) -> dict[str, list[str]]:
+) -> SummaryToolResult:
     sentences = re.split(r"(?<=[。.!?])\s*", article_text)
     compact = [s.strip() for s in sentences if s.strip()]
     summary = compact[:3] or [title]
     while len(summary) < 3:
         summary.append(title)
     key_points = _heuristic_key_points(compact[3:9] or summary)
-    return {
-        "summary_lines": summary[:3],
-        "key_points": key_points[:6],
-        "backend": f"heuristic:{reason[:80]}" if reason else "heuristic",
-    }
+    return SummaryToolResult(
+        summary_lines=summary[:3],
+        key_points=key_points[:6],
+        backend=f"heuristic:{reason[:80]}" if reason else "heuristic",
+    )
 
 
 def _heuristic_key_points(sentences: list[str]) -> list[str]:
