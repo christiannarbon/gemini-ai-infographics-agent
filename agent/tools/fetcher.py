@@ -19,6 +19,7 @@ from urllib.parse import urljoin, urlparse
 import httpx
 
 from agent.tools.gemini_client import article_fetch_max_bytes, is_mock_mode
+from agent.tools.schemas import ArticleContent
 
 try:
     import trafilatura
@@ -26,14 +27,14 @@ except ImportError:
     trafilatura = None
 
 
-async def fetch_article(url: str) -> dict[str, str]:
+async def fetch_article(url: str) -> ArticleContent:
     """Fetch a public article URL and return its title plus cleaned article text.
 
     Args:
         url: Public HTTP or HTTPS article URL to fetch.
 
     Returns:
-        A dictionary with `title` and cleaned `text` keys.
+        An ArticleContent model with title and text.
     """
     if is_mock_mode():
         host = urlparse(url).netloc or "example.com"
@@ -47,12 +48,12 @@ async def fetch_article(url: str) -> dict[str, str]:
             "In the demo, we first verify the UX and processing order in mock mode without depending on external APIs, "
             "and then replace it with Gemini text model and Nano Banana Pro / Gemini image model."
         )
-        return {"title": title, "text": body}
+        return ArticleContent(title=title, text=body)
 
     response = await _fetch_public_url(url)
 
     title, text = await _extract_article_text(response.text, str(response.url))
-    return {"title": title, "text": text[:12000]}
+    return ArticleContent(title=title, text=text[:12000])
 
 
 async def _fetch_public_url(url: str) -> httpx.Response:
