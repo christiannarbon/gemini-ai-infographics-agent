@@ -29,7 +29,6 @@ class RuntimeSummaryPayload(BaseModel):
     summary_lines: list[str] = Field(default_factory=list)
     key_points: list[str] = Field(default_factory=list)
     article_text: str = ""
-    # Note: Wire-contract default is 'unknown'; domain default is 'mock'
     text_backend: str = "unknown"
     progress: list[RuntimeProgressStep] = Field(default_factory=list)
 
@@ -42,7 +41,6 @@ class RuntimeInfographicsPayload(BaseModel):
     image_backend: str = "fallback-svg"
     artifact_url: str = ""
     artifact_mime_type: str = "image/svg+xml"
-    # Note: Wire-contract default is 'business'; domain default is 'pop'
     visual_style: str = "business"
     style_reason: str = ""
     progress: list[RuntimeProgressStep] = Field(default_factory=list)
