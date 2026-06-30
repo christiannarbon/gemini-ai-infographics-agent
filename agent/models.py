@@ -20,8 +20,7 @@ class SummaryResult(BaseModel):
     summary_lines: list[str]
     key_points: list[str]
     article_text: str
-    # Note: Domain default is 'mock'; wire-contract default is 'unknown'
-    text_backend: str = "mock"
+    text_backend: str = "unknown"
     progress: list[ProgressStep] = Field(default_factory=list)
 
 
@@ -33,7 +32,6 @@ class GraphicResult(BaseModel):
     image_backend: str = "fallback-svg"
     artifact_url: str = ""
     artifact_mime_type: str = "image/svg+xml"
-    # Note: Domain default is 'pop'; wire-contract default is 'business'
-    visual_style: str = "pop"
+    visual_style: str = "business"
     style_reason: str = ""
     progress: list[ProgressStep] = Field(default_factory=list)
