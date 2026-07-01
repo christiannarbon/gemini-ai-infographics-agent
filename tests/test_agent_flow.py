@@ -105,13 +105,31 @@ def test_non_mock_text_tools_fallback_without_gemini_credentials(monkeypatch):
     summary = asyncio.run(
         summarize_article("Demo", "First. Second. Third. Fourth. Fifth. Sixth.")
     )
-    plan = asyncio.run(
-        create_visual_plan(summary["summary_lines"], summary["key_points"])
+    plan = asyncio.run(create_visual_plan(summary.summary_lines, summary.key_points))
+
+    assert summary.summary_lines == ["First.", "Second.", "Third."]
+    assert summary.backend.startswith("heuristic")
+    assert len(plan) >= 4
+
+
+def test_heuristic_summary_short_article_backfill_constraints(monkeypatch):
+    monkeypatch.setenv("MOCK_MODE", "false")
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+    monkeypatch.delenv("GOOGLE_GENAI_USE_VERTEXAI", raising=False)
+
+    from agent.tools import summarize_article
+    import asyncio
+
+    summary = asyncio.run(
+        summarize_article(
+            "Short Demo",
+            "First sentence. Second sentence. Third sentence. Fourth sentence.",
+        )
     )
 
-    assert summary["summary_lines"] == ["First.", "Second.", "Third."]
-    assert summary["backend"].startswith("heuristic")
-    assert len(plan) >= 4
+    assert len(summary.summary_lines) == 3
+    assert 4 <= len(summary.key_points) <= 6
 
 
 def test_style_decision_affects_plan_in_mock(monkeypatch):
