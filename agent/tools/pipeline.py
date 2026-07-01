@@ -257,6 +257,11 @@ def _heuristic_summary(
     while len(summary) < 3:
         summary.append(title)
     key_points = _heuristic_key_points(compact[3:9] or summary)
+    # Guarantee the 4-6 key-point contract (mirrors ArticleSummary) even for
+    # short articles where the sentence pool is thin.
+    backfill = _heuristic_key_points(summary) or [f"{title.strip()}."]
+    while len(key_points) < 4:
+        key_points.append(backfill[len(key_points) % len(backfill)])
     return SummaryToolResult(
         summary_lines=summary[:3],
         key_points=key_points[:6],
