@@ -34,7 +34,7 @@ async def summarize_url(
     article = await tools.fetch_article(url)
     _log_duration("summarize_url", "fetch_article", started, session_id=session_id)
     progress[1] = ProgressStep(
-        label="Article body fetched", status="done", detail=article["title"]
+        label="Article body fetched", status="done", detail=article.title
     )
     progress[2] = ProgressStep(
         label="Generating 3-line summary and key points", status="running"
@@ -43,9 +43,9 @@ async def summarize_url(
     await _mock_step_delay()
 
     started = time.perf_counter()
-    summary = await tools.summarize_article(article["title"], article["text"])
+    summary = await tools.summarize_article(article.title, article.text)
     _log_duration("summarize_url", "summarize_article", started, session_id=session_id)
-    text_backend = summary.get("backend", "unknown")
+    text_backend = summary.backend
     progress[2] = ProgressStep(
         label="3-line summary and key points generated",
         status="done",
@@ -57,10 +57,10 @@ async def summarize_url(
     return SummaryResult(
         session_id=session_id,
         url=url,
-        title=article["title"],
-        summary_lines=summary["summary_lines"],
-        key_points=summary["key_points"],
-        article_text=article["text"],
+        title=article.title,
+        summary_lines=summary.summary_lines,
+        key_points=summary.key_points,
+        article_text=article.text,
         text_backend=text_backend,
         progress=progress,
     )
@@ -151,9 +151,9 @@ async def _build_infographics(
     )
     artifact_url = ""
     artifact_mime_type = "image/svg+xml"
+    image_backend = generated_image.backend
     if generated_image.data:
         svg = ""
-        image_backend = generated_image.backend
         progress[3] = ProgressStep(
             label="Image generated", status="done", detail=image_backend
         )
@@ -166,7 +166,6 @@ async def _build_infographics(
             feedback,
             style=style_decision.style,
         )
-        image_backend = generated_image.backend
         progress[3] = ProgressStep(
             label="Image generation completed with fallback SVG",
             status="done",
