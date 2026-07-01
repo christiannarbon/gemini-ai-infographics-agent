@@ -17,11 +17,23 @@ def test_default_values_parity():
         if field_info.default is not PydanticUndefined:
             return field_info.default
         if field_info.default_factory is not None:
-            try:
-                return field_info.default_factory()
-            except Exception:
-                pass
+            return field_info.default_factory()
         return PydanticUndefined
+
+    # Assert exact field name set equality across model twin pairs to guard against drift
+    assert set(SummaryResult.model_fields) == set(RuntimeSummaryPayload.model_fields), (
+        f"SummaryResult/RuntimeSummaryPayload field keys mismatch: {set(SummaryResult.model_fields) ^ set(RuntimeSummaryPayload.model_fields)}"
+    )
+
+    assert set(GraphicResult.model_fields) == set(
+        RuntimeInfographicsPayload.model_fields
+    ), (
+        f"GraphicResult/RuntimeInfographicsPayload field keys mismatch: {set(GraphicResult.model_fields) ^ set(RuntimeInfographicsPayload.model_fields)}"
+    )
+
+    assert set(ProgressStep.model_fields) == set(RuntimeProgressStep.model_fields), (
+        f"ProgressStep/RuntimeProgressStep field keys mismatch: {set(ProgressStep.model_fields) ^ set(RuntimeProgressStep.model_fields)}"
+    )
 
     # 1. Compare defaults directly for ProgressStep vs RuntimeProgressStep
     for field_name, field_info in ProgressStep.model_fields.items():
@@ -42,6 +54,8 @@ def test_default_values_parity():
             runtime_default = get_field_default(
                 RuntimeSummaryPayload.model_fields[field_name]
             )
+            # Note: required-vs-empty list/string defaults on the wire (summary_lines, key_points, article_text)
+            # are intentional lenient defaults and are skipped in default comparison.
             if domain_default is not PydanticUndefined:
                 assert domain_default == runtime_default, (
                     f"SummaryResult.{field_name} default mismatch: {domain_default} != {runtime_default}"
@@ -54,6 +68,7 @@ def test_default_values_parity():
             runtime_default = get_field_default(
                 RuntimeInfographicsPayload.model_fields[field_name]
             )
+            # Note: visual_plan is required in domain but has list default factory on wire, which is skipped.
             if domain_default is not PydanticUndefined:
                 assert domain_default == runtime_default, (
                     f"GraphicResult.{field_name} default mismatch: {domain_default} != {runtime_default}"
