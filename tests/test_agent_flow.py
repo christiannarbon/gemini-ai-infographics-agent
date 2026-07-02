@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from web.main import app  # noqa: E402
+from agent.errors import ArticleFetchError, ArticleTooLargeError, ConfigError
 
 
 def test_phase1_url_to_svg_regeneration_flow():
@@ -89,7 +90,7 @@ def test_real_fetch_rejects_localhost_when_mock_disabled(monkeypatch):
     import asyncio
     import pytest
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ArticleFetchError):
         asyncio.run(_assert_public_http_url("http://127.0.0.1:8000"))
 
 
@@ -477,7 +478,7 @@ def test_runtime_backend_requires_resource_name(monkeypatch):
     import pytest
 
     client = build_agent_client()
-    with pytest.raises(RuntimeError, match="AGENT_RUNTIME_RESOURCE_NAME"):
+    with pytest.raises(ConfigError, match="AGENT_RUNTIME_RESOURCE_NAME"):
         asyncio.run(client.summarize_url("https://example.com"))
 
 
@@ -493,7 +494,7 @@ def test_runtime_backend_rejects_placeholder_resource_name(monkeypatch):
     import pytest
 
     client = build_agent_client()
-    with pytest.raises(RuntimeError, match="placeholder"):
+    with pytest.raises(ConfigError, match="placeholder"):
         asyncio.run(client.summarize_url("https://example.com"))
 
 
@@ -971,7 +972,7 @@ def test_read_limited_response_rejects_oversized_body():
             yield b"abc"
             yield b"def"
 
-    with pytest.raises(ValueError, match="exceeds 5 bytes"):
+    with pytest.raises(ArticleTooLargeError, match="exceeds 5 bytes"):
         asyncio.run(_read_limited_response(Response(), 5))
 
 
