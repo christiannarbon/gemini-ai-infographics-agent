@@ -7,6 +7,7 @@ from agent.actions import (
     regenerate_infographics,
     summarize_url,
 )
+from agent.errors import ConfigError
 from agent.config import get_settings
 from agent.models import SummaryResult
 from agent.runtime_contract import (
@@ -84,7 +85,7 @@ async def runtime_regenerate_infographics(
 
 def _assert_runtime_artifact_store() -> None:
     if not get_settings().gcs_bucket:
-        raise RuntimeError(
+        raise ConfigError(
             "GCS_BUCKET is required for Agent Runtime infographics generation because "
             "Cloud Run cannot serve files from the Agent Runtime filesystem."
         )
