@@ -12,6 +12,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from agent.config import get_settings
+from agent.errors import ArtifactStorageError, SignedUrlError
 
 logger = logging.getLogger(__name__)
 
@@ -91,21 +92,28 @@ async def _upload_artifact_to_gcs(path: Path, content_type: str) -> str:
     try:
         return await asyncio.to_thread(upload)
     except Exception as exc:
+        if isinstance(exc, (SignedUrlError, ArtifactStorageError)):
+            raise exc
         logger.warning("Cloud Storage artifact upload failed: %s", exc)
         return ""
 
 
 def _generate_signed_artifact_url(blob) -> str:
-    ttl_seconds = signed_artifact_url_ttl_seconds()
-    credentials, service_account_email = _signed_url_credentials()
-    return blob.generate_signed_url(
-        version="v4",
-        expiration=timedelta(seconds=ttl_seconds),
-        method="GET",
-        credentials=credentials,
-        service_account_email=service_account_email,
-        access_token=credentials.token,
-    )
+    try:
+        ttl_seconds = signed_artifact_url_ttl_seconds()
+        credentials, service_account_email = _signed_url_credentials()
+        return blob.generate_signed_url(
+            version="v4",
+            expiration=timedelta(seconds=ttl_seconds),
+            method="GET",
+            credentials=credentials,
+            service_account_email=service_account_email,
+            access_token=credentials.token,
+        )
+    except Exception as exc:
+        if isinstance(exc, (SignedUrlError, ArtifactStorageError)):
+            raise exc
+        raise SignedUrlError(f"Failed to generate signed URL: {exc}") from exc
 
 
 def signed_artifact_url_ttl_seconds() -> int:
@@ -116,11 +124,16 @@ def _signed_url_credentials():
     import google.auth
     from google.auth.transport.requests import Request
 
-    credentials, _project = google.auth.default(
-        scopes=["https://www.googleapis.com/auth/cloud-platform"]
-    )
-    auth_request = Request()
-    credentials.refresh(auth_request)
+    try:
+        credentials, _project = google.auth.default(
+            scopes=["https://www.googleapis.com/auth/cloud-platform"]
+        )
+        auth_request = Request()
+        credentials.refresh(auth_request)
+    except Exception as exc:
+        raise SignedUrlError(
+            f"Failed to load credentials for GCS signing: {exc}"
+        ) from exc
 
     service_account_email = get_settings().gcs_signing_service_account or getattr(
         credentials,
@@ -128,7 +141,7 @@ def _signed_url_credentials():
         "",
     )
     if not service_account_email:
-        raise RuntimeError(
+        raise SignedUrlError(
             "Could not determine the service account email for signed URL generation. "
             "Set GCS_SIGNING_SERVICE_ACCOUNT to the Agent Runtime service account."
         )
