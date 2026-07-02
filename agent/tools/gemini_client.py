@@ -13,6 +13,7 @@ import re
 from typing import Optional
 
 from agent.config import get_settings
+from agent.errors import ConfigError, GeminiError
 
 logger = logging.getLogger(__name__)
 
@@ -91,42 +92,55 @@ def _exception_status_code(exc: Exception) -> Optional[int]:
 
 async def _generate_structured_content(prompt: str, schema_model):
     if not get_settings().has_gemini_credentials:
-        raise RuntimeError(
+        raise ConfigError(
             "GEMINI_API_KEY, GOOGLE_API_KEY, or Vertex AI Gemini environment settings are required"
         )
 
     async_client = _get_genai_client().aio
-    response = await _call_with_retries(
-        lambda: async_client.models.generate_content(
-            model=get_settings().gemini_text_model,
-            contents=prompt,
-            config={
-                "response_mime_type": "application/json",
-                "response_schema": schema_model,
-            },
-        ),
-        operation="gemini-structured-content",
-    )
+    try:
+        response = await _call_with_retries(
+            lambda: async_client.models.generate_content(
+                model=get_settings().gemini_text_model,
+                contents=prompt,
+                config={
+                    "response_mime_type": "application/json",
+                    "response_schema": schema_model,
+                },
+            ),
+            operation="gemini-structured-content",
+        )
+    except Exception as exc:
+        raise GeminiError(
+            f"Gemini structured content generation failed: {exc}"
+        ) from exc
+
     if response.parsed is not None:
         return response.parsed
-    return schema_model.model_validate_json(response.text)
+    try:
+        return schema_model.model_validate_json(response.text)
+    except Exception as exc:
+        raise GeminiError(f"Failed to parse structured response: {exc}") from exc
 
 
 async def _generate_image_data(prompt: str) -> tuple[bytes, str]:
     from google.genai import types
 
     async_client = _get_genai_client().aio
-    response = await _call_with_retries(
-        lambda: async_client.models.generate_content(
-            model=get_settings().gemini_image_model,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_modalities=[types.Modality.TEXT, types.Modality.IMAGE],
-                candidate_count=1,
+    try:
+        response = await _call_with_retries(
+            lambda: async_client.models.generate_content(
+                model=get_settings().gemini_image_model,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_modalities=[types.Modality.TEXT, types.Modality.IMAGE],
+                    candidate_count=1,
+                ),
             ),
-        ),
-        operation="gemini-image-generation",
-    )
+            operation="gemini-image-generation",
+        )
+    except Exception as exc:
+        raise GeminiError(f"Gemini image generation failed: {exc}") from exc
+
     if not response.candidates:
         return b"", "image/png"
     parts = (
