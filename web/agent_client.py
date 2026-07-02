@@ -25,6 +25,7 @@ from agent.runtime_contract import (
     RuntimeWorkflowResponse,
     convert_model,
 )
+from agent.errors import RuntimeContractError, ConfigError
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +93,7 @@ class RuntimeAgentClient:
             {"operation": "summarize_url", "url": url}
         )
         if not response.summary:
-            raise RuntimeError("Agent Runtime response did not include summary")
+            raise RuntimeContractError("Agent Runtime response did not include summary")
         return convert_model(response.summary, SummaryResult)
 
     async def generate_infographics(
@@ -112,7 +113,9 @@ class RuntimeAgentClient:
             }
         )
         if not response.infographics:
-            raise RuntimeError("Agent Runtime response did not include infographics")
+            raise RuntimeContractError(
+                "Agent Runtime response did not include infographics"
+            )
         return convert_model(response.infographics, GraphicResult)
 
     async def regenerate_infographics(
@@ -134,7 +137,9 @@ class RuntimeAgentClient:
             }
         )
         if not response.infographics:
-            raise RuntimeError("Agent Runtime response did not include infographics")
+            raise RuntimeContractError(
+                "Agent Runtime response did not include infographics"
+            )
         return convert_model(response.infographics, GraphicResult)
 
     async def _run_runtime_operation(self, payload: dict) -> RuntimeWorkflowResponse:
@@ -186,7 +191,7 @@ class RuntimeAgentClient:
             event_count,
             event_shapes,
         )
-        raise RuntimeError("Agent Runtime returned no workflow response")
+        raise RuntimeContractError("Agent Runtime returned no workflow response")
 
     def _get_remote_agent(self):
         if self._remote_agent is not None:
@@ -195,11 +200,11 @@ class RuntimeAgentClient:
         settings = get_settings()
         resource_name = settings.agent_runtime_resource_name
         if not resource_name:
-            raise RuntimeError(
+            raise ConfigError(
                 "Set AGENT_RUNTIME_RESOURCE_NAME when AGENT_BACKEND=runtime."
             )
         if _looks_like_placeholder(resource_name):
-            raise RuntimeError(
+            raise ConfigError(
                 "AGENT_RUNTIME_RESOURCE_NAME still contains a placeholder. "
                 "Set it to the exact projects/.../locations/.../reasoningEngines/... value "
                 "printed by scripts/deploy-agent-runtime.py."
@@ -382,7 +387,7 @@ def _validated_runtime_response(
         bool(response.error),
     )
     if response.error:
-        raise RuntimeError(response.error)
+        raise RuntimeContractError(response.error)
     return response
 
 
