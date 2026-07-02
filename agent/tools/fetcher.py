@@ -20,6 +20,7 @@ import httpx
 
 from agent.tools.gemini_client import article_fetch_max_bytes, is_mock_mode
 from agent.tools.schemas import ArticleContent
+from agent.errors import ArticleFetchError, ArticleTooLargeError
 
 try:
     import trafilatura
@@ -63,42 +64,47 @@ async def _fetch_public_url(url: str) -> httpx.Response:
         "Accept-Encoding": "identity",
         "User-Agent": "GeminiEnterpriseAgentPoC/1.0",
     }
-    async with httpx.AsyncClient(
-        follow_redirects=False, timeout=15, headers=headers
-    ) as client:
-        for _ in range(5):
-            # Resolve and validate, then pin the connection to the validated IP
-            # so httpx does not perform its own (potentially rebound) lookup.
-            pinned_ip = await _assert_public_http_url(current_url)
-            connect_url, extra_headers, extensions = _pin_connection(
-                current_url, pinned_ip
-            )
-            async with client.stream(
-                "GET", connect_url, headers=extra_headers, extensions=extensions
-            ) as response:
-                if response.is_redirect:
-                    location = response.headers.get("location")
-                    if not location:
-                        break
-                    # Join against the logical (hostname) URL, not the pinned-IP one.
-                    current_url = urljoin(current_url, location)
-                    continue
-                response.raise_for_status()
-                raw_content = await _read_limited_response(
-                    response, article_fetch_max_bytes()
+    try:
+        async with httpx.AsyncClient(
+            follow_redirects=False, timeout=15, headers=headers
+        ) as client:
+            for _ in range(5):
+                # Resolve and validate, then pin the connection to the validated IP
+                # so httpx does not perform its own (potentially rebound) lookup.
+                pinned_ip = await _assert_public_http_url(current_url)
+                connect_url, extra_headers, extensions = _pin_connection(
+                    current_url, pinned_ip
                 )
-                content = _decode_response_content(raw_content, response.headers)
-                response_headers = httpx.Headers(response.headers)
-                response_headers.pop("content-encoding", None)
-                response_headers["content-length"] = str(len(content))
-                return httpx.Response(
-                    response.status_code,
-                    headers=response_headers,
-                    content=content,
-                    request=httpx.Request("GET", current_url),
-                    extensions=response.extensions,
-                )
-    raise ValueError("Too many redirects while fetching article")
+                async with client.stream(
+                    "GET", connect_url, headers=extra_headers, extensions=extensions
+                ) as response:
+                    if response.is_redirect:
+                        location = response.headers.get("location")
+                        if not location:
+                            break
+                        # Join against the logical (hostname) URL, not the pinned-IP one.
+                        current_url = urljoin(current_url, location)
+                        continue
+                    response.raise_for_status()
+                    raw_content = await _read_limited_response(
+                        response, article_fetch_max_bytes()
+                    )
+                    content = _decode_response_content(raw_content, response.headers)
+                    response_headers = httpx.Headers(response.headers)
+                    response_headers.pop("content-encoding", None)
+                    response_headers["content-length"] = str(len(content))
+                    return httpx.Response(
+                        response.status_code,
+                        headers=response_headers,
+                        content=content,
+                        request=httpx.Request("GET", current_url),
+                        extensions=response.extensions,
+                    )
+        raise ArticleFetchError("Too many redirects while fetching article")
+    except Exception as exc:
+        if isinstance(exc, (ArticleFetchError, ArticleTooLargeError)):
+            raise exc
+        raise ArticleFetchError(f"Failed to fetch public URL: {exc}") from exc
 
 
 def _pin_connection(
@@ -133,7 +139,7 @@ async def _read_limited_response(response: httpx.Response, max_bytes: int) -> by
     async for chunk in response.aiter_raw():
         total += len(chunk)
         if total > max_bytes:
-            raise ValueError(f"Article response exceeds {max_bytes} bytes")
+            raise ArticleTooLargeError(f"Article response exceeds {max_bytes} bytes")
         chunks.append(chunk)
     return b"".join(chunks)
 
@@ -184,9 +190,9 @@ async def _assert_public_http_url(url: str) -> Optional[str]:
     """
     parsed = urlparse(url)
     if parsed.scheme not in {"http", "https"}:
-        raise ValueError("Only http and https URLs are allowed")
+        raise ArticleFetchError("Only http and https URLs are allowed")
     if not parsed.hostname:
-        raise ValueError("URL host is required")
+        raise ArticleFetchError("URL host is required")
 
     host = parsed.hostname
     try:
@@ -195,15 +201,28 @@ async def _assert_public_http_url(url: str) -> Optional[str]:
         literal_ip = None
 
     if literal_ip:
-        _reject_private_address(literal_ip)
+        try:
+            _reject_private_address(literal_ip)
+        except ValueError as exc:
+            raise ArticleFetchError(
+                "Private, local, or reserved network addresses are not allowed"
+            ) from exc
         return None
 
-    addresses = await _resolve_host(host)
+    try:
+        addresses = await _resolve_host(host)
+    except Exception as exc:
+        raise ArticleFetchError("URL host could not be resolved") from exc
     if not addresses:
-        raise ValueError("URL host could not be resolved")
+        raise ArticleFetchError("URL host could not be resolved")
 
     for address in addresses:
-        _reject_private_address(ipaddress.ip_address(address))
+        try:
+            _reject_private_address(ipaddress.ip_address(address))
+        except ValueError as exc:
+            raise ArticleFetchError(
+                "Private, local, or reserved network addresses are not allowed"
+            ) from exc
 
     return next(iter(addresses))
 
