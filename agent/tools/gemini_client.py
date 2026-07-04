@@ -46,13 +46,12 @@ def close_genai_client() -> None:
 
 async def _call_with_retries(operation_factory, operation: str):
     max_attempts = get_settings().gemini_max_attempts
+    assert max_attempts >= 1, "gemini_max_attempts must be at least 1"
     base_delay = get_settings().gemini_retry_base_delay_seconds
-    last_error: Optional[Exception] = None
     for attempt in range(1, max_attempts + 1):
         try:
             return await operation_factory()
         except Exception as exc:
-            last_error = exc
             if attempt >= max_attempts or not _is_retryable_exception(exc):
                 raise
             delay = base_delay * (2 ** (attempt - 1))
@@ -65,7 +64,6 @@ async def _call_with_retries(operation_factory, operation: str):
                 exc,
             )
             await asyncio.sleep(delay)
-    raise RuntimeError(f"{operation} failed") from last_error
 
 
 def _is_retryable_exception(exc: Exception) -> bool:
