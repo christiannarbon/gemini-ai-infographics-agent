@@ -3,7 +3,6 @@ from agent.errors import (
     ArticleTooLargeError,
     ArtifactStorageError,
     ConfigError,
-    GeminiError,
     RuntimeContractError,
     SignedUrlError,
 )
@@ -18,12 +17,15 @@ def _friendly_error_message(exc: Exception) -> str:
             return "The destination bucket for generated images is not set. Set GCS_BUCKET and redeploy Runtime."
         elif "model" in normalized:
             return "Gemini model not found. Check the model ID and GOOGLE_CLOUD_LOCATION=global settings."
-        else:
+        elif "resource" in normalized or "placeholder" in normalized:
             return "A placeholder remains in the Agent Runtime resource name. Set AGENT_RUNTIME_RESOURCE_NAME to the actual projects/.../reasoningEngines/... value and redeploy Cloud Run."
+        else:
+            return ""
 
     if isinstance(exc, SignedUrlError):
         return "Insufficient permissions to generate the signed URL for the image. Please re-run scripts/runtime-iam-config.sh."
 
+    # Note: Currently no producer raises this directly, but kept for potential future use/future raisers.
     if isinstance(exc, ArtifactStorageError):
         return "Insufficient Google Cloud permissions. Check IAM configurations for Cloud Run, Agent Runtime, and Cloud Storage."
 
@@ -36,11 +38,7 @@ def _friendly_error_message(exc: Exception) -> str:
     if isinstance(exc, RuntimeContractError):
         return "Agent Runtime did not return the expected response format. Check the Runtime logs."
 
-    if isinstance(exc, GeminiError):
-        if "publisher model" in normalized or (
-            "model" in normalized and "404" in normalized
-        ):
-            return "Gemini model not found. Check the model ID and GOOGLE_CLOUD_LOCATION=global settings."
+    # Note: GeminiError and credentials ConfigError are handled by pipeline fallbacks and do not reach display_error.
 
     # 2. Substring heuristic fallback for foreign/unknown exceptions
     if "project_number" in normalized or "resource_id" in normalized:
