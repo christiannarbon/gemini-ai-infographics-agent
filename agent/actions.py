@@ -184,12 +184,14 @@ async def _build_infographics(
             generated_image.mime_type,
         )
         artifact_mime_type = generated_image.mime_type
+        # Note: only reached when GCS_BUCKET is unset; GCS signing failures raise SignedUrlError and fail early.
         if not artifact_url:
             artifact_url = tools.artifact_url_for_path(artifact_path)
     else:
         artifact_path, artifact_url = await tools.save_artifact_with_url(
             summary.session_id, svg
         )
+        # Note: only reached when GCS_BUCKET is unset; GCS signing failures raise SignedUrlError and fail early.
         if not artifact_url:
             artifact_url = tools.artifact_url_for_path(artifact_path)
     _log_duration(
