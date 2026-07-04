@@ -12,7 +12,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from agent.config import get_settings
-from agent.errors import ArtifactStorageError, SignedUrlError
+from agent.errors import SignedUrlError
 
 logger = logging.getLogger(__name__)
 
@@ -91,9 +91,9 @@ async def _upload_artifact_to_gcs(path: Path, content_type: str) -> str:
 
     try:
         return await asyncio.to_thread(upload)
-    # intentional fallback
+    # re-raise domain storage errors; log-and-degrade for unknown upload failures
     except Exception as exc:
-        if isinstance(exc, (SignedUrlError, ArtifactStorageError)):
+        if isinstance(exc, SignedUrlError):
             raise exc
         logger.warning("Cloud Storage artifact upload failed: %s", exc)
         return ""
@@ -112,7 +112,7 @@ def _generate_signed_artifact_url(blob) -> str:
             access_token=credentials.token,
         )
     except Exception as exc:
-        if isinstance(exc, (SignedUrlError, ArtifactStorageError)):
+        if isinstance(exc, SignedUrlError):
             raise exc
         raise SignedUrlError(f"Failed to generate signed URL: {exc}") from exc
 
