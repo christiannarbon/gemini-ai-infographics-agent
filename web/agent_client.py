@@ -293,7 +293,9 @@ class AdkAgentClient(LocalAgentClient):
 
         try:
             detail = await run_narration_turn(prompt, session_id=uuid4().hex)
+        # intentional fallback
         except Exception as exc:
+            logger.warning("ADK narrator failed, using fallback detail: %s", exc)
             detail = f"adk:fallback:{str(exc)[:120]}"
 
         done = [ProgressStep(label=label, status="done", detail=detail)]
@@ -365,13 +367,15 @@ def _runtime_response_from_event(event: dict) -> Optional[RuntimeWorkflowRespons
         if isinstance(response, dict):
             try:
                 return RuntimeWorkflowResponse.model_validate(response)
-            except Exception:
+            except Exception as exc:
+                logger.debug("discarding unparseable runtime part: %s", exc)
                 continue
         text = part.get("text")
         if isinstance(text, str) and text.strip():
             try:
                 return _runtime_response_from_text(text)
-            except Exception:
+            except Exception as exc:
+                logger.debug("discarding unparseable runtime part: %s", exc)
                 continue
     return None
 
