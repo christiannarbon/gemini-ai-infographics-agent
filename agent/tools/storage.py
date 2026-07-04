@@ -91,6 +91,7 @@ async def _upload_artifact_to_gcs(path: Path, content_type: str) -> str:
 
     try:
         return await asyncio.to_thread(upload)
+    # intentional fallback
     except Exception as exc:
         if isinstance(exc, (SignedUrlError, ArtifactStorageError)):
             raise exc
