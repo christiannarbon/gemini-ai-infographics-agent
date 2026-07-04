@@ -69,6 +69,7 @@ async def summarize_article(title: str, article_text: str) -> SummaryToolResult:
         summary = await gemini_client._generate_structured_content(
             prompt, ArticleSummary
         )
+    # intentional fallback
     except Exception as exc:
         logger.warning("Gemini summarize failed, falling back to heuristic: %s", exc)
         return _heuristic_summary(title, article_text, reason=str(exc))
@@ -103,6 +104,7 @@ async def decide_style(
     prompt = prompts.build_style_prompt(summary_lines, key_points, feedback)
     try:
         return await gemini_client._generate_structured_content(prompt, StyleDecision)
+    # intentional fallback
     except Exception as exc:
         logger.warning(
             "Gemini style decision failed, falling back to heuristic: %s", exc
@@ -164,6 +166,7 @@ async def create_visual_plan_for_style(
             prompt, VisualPlan
         )
         return visual_plan.plan_items[:6]
+    # intentional fallback
     except Exception as exc:
         logger.warning(
             "Gemini visual plan failed, falling back to default plan: %s", exc
@@ -232,6 +235,7 @@ async def generate_image_artifact(
     )
     try:
         image_bytes, mime_type = await gemini_client._generate_image_data(prompt)
+    # intentional fallback
     except Exception as exc:
         logger.warning("Gemini image generation failed, falling back to SVG: %s", exc)
         return GeneratedImage(b"", "", f"fallback-svg:{str(exc)[:120]}")
