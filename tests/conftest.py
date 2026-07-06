@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import os
 import sys
 from pathlib import Path
 
@@ -7,6 +10,8 @@ if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
 
 import pytest  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+
 from agent.config import get_settings  # noqa: E402
 
 
@@ -43,8 +48,6 @@ def clear_settings_cache(monkeypatch):
     for var in env_vars_to_del:
         monkeypatch.delenv(var, raising=False)
 
-    import os
-
     for var in list(os.environ.keys()):
         if var.startswith("AGENT_RUNTIME_"):
             monkeypatch.delenv(var, raising=False)
@@ -56,3 +59,44 @@ def clear_settings_cache(monkeypatch):
 
     yield
     get_settings.cache_clear()
+
+
+@pytest.fixture
+def env_settings(monkeypatch):
+    """Sets standard baseline test settings and clears config cache."""
+    monkeypatch.setenv("MOCK_MODE", "true")
+    monkeypatch.setenv("AGENT_BACKEND", "local")
+    monkeypatch.setenv("MOCK_STEP_DELAY", "0")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
+@pytest.fixture
+def app(env_settings):
+    """Creates a clean app instance with configuration context."""
+    try:
+        from web.app import create_app
+
+        return create_app()
+    except ImportError:
+        from web.main import app as main_app
+
+        return main_app
+
+
+@pytest.fixture
+def client(app):
+    """Provides a TestClient context for HTTP endpoint verification."""
+    yield TestClient(app)
+
+
+@pytest.fixture
+def set_env(monkeypatch):
+    """Dynamically overrides setting env variable and clears config cache."""
+
+    def _set(name, value):
+        monkeypatch.setenv(name, str(value))
+        get_settings.cache_clear()
+
+    return _set
