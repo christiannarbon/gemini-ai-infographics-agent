@@ -62,14 +62,9 @@ def clear_settings_cache(monkeypatch):
 
 
 @pytest.fixture
-def env_settings(monkeypatch):
-    """Sets standard baseline test settings and clears config cache."""
-    monkeypatch.setenv("MOCK_MODE", "true")
-    monkeypatch.setenv("AGENT_BACKEND", "local")
-    monkeypatch.setenv("MOCK_STEP_DELAY", "0")
-    get_settings.cache_clear()
+def env_settings(clear_settings_cache):
+    """Placeholder dependency alignment for env_settings."""
     yield
-    get_settings.cache_clear()
 
 
 @pytest.fixture
@@ -88,7 +83,8 @@ def app(env_settings):
 @pytest.fixture
 def client(app):
     """Provides a TestClient context for HTTP endpoint verification."""
-    yield TestClient(app)
+    with TestClient(app) as c:
+        yield c
 
 
 @pytest.fixture
