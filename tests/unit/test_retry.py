@@ -137,3 +137,35 @@ def test_is_retryable_exception():
     assert _is_retryable_exception(Exception("Error status 429 encountered")) is True
     assert _is_retryable_exception(Exception("Random failure 500 error")) is True
     assert _is_retryable_exception(Exception("Random 404 error")) is False
+
+
+@pytest.mark.unit
+@pytest.mark.anyio
+async def test_retry_single_attempt_no_sleep(monkeypatch):
+    monkeypatch.setenv("GEMINI_MAX_ATTEMPTS", "1")
+    from agent.config import get_settings
+
+    get_settings.cache_clear()
+
+    attempts = 0
+
+    class RetryableException(Exception):
+        status_code = 500
+
+    async def mock_op():
+        nonlocal attempts
+        attempts += 1
+        raise RetryableException("Transient error")
+
+    sleep_called = []
+
+    async def mock_sleep(delay):
+        sleep_called.append(delay)
+
+    monkeypatch.setattr(asyncio, "sleep", mock_sleep)
+
+    with pytest.raises(RetryableException):
+        await _call_with_retries(mock_op, "test_op")
+
+    assert attempts == 1
+    assert len(sleep_called) == 0
