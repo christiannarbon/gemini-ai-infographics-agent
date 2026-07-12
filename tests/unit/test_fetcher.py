@@ -168,3 +168,33 @@ def test_decode_response_content():
     # unsupported encoding
     with pytest.raises(ValueError, match="Unsupported Content-Encoding=br"):
         _decode_response_content(raw, headers_invalid)
+
+
+@pytest.mark.unit
+@pytest.mark.anyio
+async def test_resolve_host(monkeypatch):
+    import socket
+    from agent.tools.fetcher import _resolve_host
+
+    def mock_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+        # returns list of 5-tuples: (family, type, proto, canonname, sockaddr)
+        return [
+            (
+                socket.AF_INET,
+                socket.SOCK_STREAM,
+                socket.IPPROTO_TCP,
+                "",
+                ("8.8.8.8", 0),
+            ),
+            (
+                socket.AF_INET,
+                socket.SOCK_STREAM,
+                socket.IPPROTO_TCP,
+                "",
+                ("8.8.4.4", 0),
+            ),
+        ]
+
+    monkeypatch.setattr(socket, "getaddrinfo", mock_getaddrinfo)
+    ips = await _resolve_host("google-public-dns.com")
+    assert ips == {"8.8.8.8", "8.8.4.4"}
