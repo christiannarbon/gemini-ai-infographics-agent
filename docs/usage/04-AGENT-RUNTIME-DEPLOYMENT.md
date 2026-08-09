@@ -5,11 +5,31 @@ This guide explains how to deploy the ADK Agent to Google Cloud's Agent Runtime 
 ## What is Agent Runtime Deployment?
 
 For beginners new to the project, here is what `python scripts/agent-runtime-deployment.py` does behind the scenes:
-1. **Dependency Packaging**: It reads the Python requirements/constraints file (e.g., `constraints.txt`), cleans it up, and prepares the necessary python dependencies.
-2. **Code Uploading**: It packages the local `agent` code directory and uploads it along with dependencies to a staging Google Cloud Storage (GCS) bucket.
+1. **Dependency Packaging**: It reads the Python requirements/constraints file (`AGENT_RUNTIME_REQUIREMENTS_FILE`, default `constraints.txt`), cleans it up, and prepares the necessary python dependencies.
+2. **Code Uploading**: It packages the local `agent` package (including the `agent/tools/` modules: article fetcher, Gemini client, pipeline, prompts, storage, and the fallback SVG renderer) and uploads it along with dependencies to a staging Google Cloud Storage (GCS) bucket.
 3. **Reasoning Engine Creation**: It registers the Agent on Google Cloud Vertex AI's **Reasoning Engine (Agent Runtime)** service.
 4. **Environment Setup**: It configures the deployed Agent Runtime with runtime environment variables (such as target Gemini text/image models, storage buckets, and API configurations).
 5. **Effective Identity Output**: It returns the unique identity (service account) used by the running engine so that it can be granted access to GCS and other resources.
+
+The script no longer reads these settings from `os.getenv` one by one; it resolves them through the shared typed settings object in `agent/config.py`. In practice this means your `export` values and any `.env` file are both honored, and each value is validated before it is baked into the deployment.
+
+### Environment Variables Injected into the Runtime
+
+The script sends the following configuration into the deployed Agent Runtime environment. Values marked *fixed* are set by the script and cannot be overridden from your shell:
+
+| Variable | Value |
+| --- | --- |
+| `MOCK_MODE` | `false` *(fixed)* |
+| `GOOGLE_GENAI_USE_VERTEXAI` | `true` *(fixed)* |
+| `GOOGLE_CLOUD_LOCATION` | Your value, or `global` when unset |
+| `GEMINI_TEXT_MODEL` / `GEMINI_IMAGE_MODEL` | Your values, or the defaults from `agent/config.py` |
+| `GCS_BUCKET` / `GCS_ARTIFACT_PREFIX` | Artifact destination for generated infographics |
+| `GCS_SIGNED_URL_TTL_SECONDS` / `GCS_SIGNING_SERVICE_ACCOUNT` | Signed URL lifetime and signing identity |
+| `ARTICLE_FETCH_MAX_BYTES` | Article body byte cap |
+| `GEMINI_MAX_ATTEMPTS` / `GEMINI_RETRY_BASE_DELAY_SECONDS` | Gemini retry attempts and backoff base delay |
+
+> [!IMPORTANT]
+> `GCS_BUCKET` must be set before the runtime generates infographics. Cloud Run cannot serve files from the Agent Runtime filesystem, so the runtime raises a configuration error ("GCS_BUCKET is required for Agent Runtime infographics generation") if the bucket is missing. Re-run this deployment script after setting the bucket.
 
 ---
 
