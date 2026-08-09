@@ -45,7 +45,7 @@ set -euo pipefail
 reject_placeholder() {
   local name="$1"
   local value="$2"
-  if [[ "${value}" == *PROJECT_NUMBER* || "${value}" == *RESOURCE_ID* || "${value}" == *SERVICE_AGENT_EMAIL_FROM_EFFECTIVE_IDENTITY* || "${value}" == *YOUR_PROJECT_ID* || "${value}" == *CHANGE_ME* ]]; then
+  if [[ "${value}" == *PROJECT_NUMBER* || "${value}" == *RESOURCE_ID* || "${value}" == *SERVICE_AGENT_EMAIL_FROM_EFFECTIVE_IDENTITY* || "${value}" == *YOUR_PROJECT_ID* || "${value}" == *CHANGE_ME* || "${value}" == *PASTE_HERE* ]]; then
     echo "ERROR: ${name} still contains a placeholder: ${value}" >&2
     echo "Replace placeholder values with the actual values from your project before deploying." >&2
     exit 1
