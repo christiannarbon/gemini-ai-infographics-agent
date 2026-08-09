@@ -207,7 +207,7 @@ class RuntimeAgentClient:
             raise ConfigError(
                 "AGENT_RUNTIME_RESOURCE_NAME still contains a placeholder. "
                 "Set it to the exact projects/.../locations/.../reasoningEngines/... value "
-                "printed by scripts/deploy-agent-runtime.py."
+                "printed by scripts/agent-runtime-deployment.py."
             )
 
         import vertexai
@@ -343,6 +343,7 @@ def _looks_like_placeholder(value: str) -> bool:
         "SERVICE_AGENT_EMAIL_FROM_EFFECTIVE_IDENTITY",
         "YOUR_PROJECT_ID",
         "CHANGE_ME",
+        "PASTE_HERE",
     )
     return any(placeholder in value for placeholder in placeholders)
 
