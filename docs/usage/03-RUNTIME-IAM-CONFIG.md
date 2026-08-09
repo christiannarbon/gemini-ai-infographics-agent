@@ -38,7 +38,7 @@ export CLOUD_RUN_SA="..."
 export GCS_SIGNING_SERVICE_ACCOUNT="..."
 ```
 
-If you already configured these environment variables in **Section 4 (Infra Bootstrapping)**, you do not need to run the `export` commands again, as they will be identical. 
+If you already configured these environment variables in [Infra Bootstrapping](02-INFRA-BOOTSTRAPPING.md), you do not need to run the `export` commands again, as they will be identical. 
 
 Just verify that the values match the following pattern:
 * `CLOUD_RUN_SA` should be `${PROJECT_NUMBER}-compute@developer.gserviceaccount.com`
