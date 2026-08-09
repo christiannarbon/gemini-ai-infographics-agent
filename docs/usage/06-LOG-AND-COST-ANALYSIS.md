@@ -30,8 +30,32 @@ To view logs specifically for the Cloud Run frontend container, run:
 gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="'"${SERVICE_NAME}"'"' \
   --project="${PROJECT_ID}" \
   --limit=100 \
-  --format='value(timestamp,severity,textPayload,jsonPayload.message,jsonPayload.error)'
+  --format='value(timestamp,severity,jsonPayload.logger,jsonPayload.message,jsonPayload.exception,textPayload)'
 ```
+
+#### Structured Log Fields
+
+The Cloud Run deployment sets `APP_LOG_FORMAT=json`, so the web app emits one JSON object per log line with these fields:
+
+| Field | Contents |
+| --- | --- |
+| `jsonPayload.timestamp` | UTC ISO-8601 timestamp |
+| `jsonPayload.severity` | Python log level (`INFO`, `WARNING`, `ERROR`, ...) |
+| `jsonPayload.logger` | Logger name, which identifies the module that emitted the entry |
+| `jsonPayload.message` | The log message |
+| `jsonPayload.exception` | Full formatted traceback, present only on entries logged with exception info |
+
+To filter for failures only, query on severity and inspect the traceback field:
+
+```bash
+gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="'"${SERVICE_NAME}"'" AND severity>=ERROR' \
+  --project="${PROJECT_ID}" \
+  --limit=50 \
+  --format='value(timestamp,jsonPayload.logger,jsonPayload.message,jsonPayload.exception)'
+```
+
+> [!TIP]
+> Set `LOG_LEVEL=DEBUG` and redeploy for a noisier trace while troubleshooting, then set it back to `INFO`. For local runs, `APP_LOG_FORMAT=text` prints readable one-line logs instead of JSON.
 
 ### Inspecting Agent Runtime Logs
 
